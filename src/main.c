@@ -7,6 +7,8 @@
 #include <symbols.h>
 #include <screenmath.h>
 
+XRGBA COLOR_BLANK = {0, 0, 0, 0};
+
 XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
 XRGBA COLOR_P2 = {0x80, 0x20, 0x20, 0x80}; //Red
 XRGBA COLOR_P3 = {0x08, 0x60, 0x00, 0x80}; //Green
@@ -818,6 +820,14 @@ void DrawUpdate() {
                     };
 
                     XRGBA* col = GetHealthColor(PLAYER_HEALTH[i]);
+                    
+                    //Logic to make the health square flash red if player is on 1HP
+                    static int flashingTimer = 0;
+                    flashingTimer++;
+                    if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
+                        col = &COLOR_RED;
+                    }
+                    if (flashingTimer > 40) { flashingTimer = 0; }
 
                     Util_DrawRect(gpPanelWnd, &r, col);
                 }

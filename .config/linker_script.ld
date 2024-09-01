@@ -34,6 +34,10 @@ MEMORY
     hookSparxSetPlayerHealth1 : ORIGIN = 0x800f2944, LENGTH = 0x100000
     hookSparxSetPlayerHealth2 : ORIGIN = 0x800f2b20, LENGTH = 0x100000
     hookSparxSetPlayerHealth3 : ORIGIN = 0x8015dee8, LENGTH = 0x100000
+    patchHandleWallClimb1 : ORIGIN = 0x80056174, LENGTH = 0x100000
+    patchHandleWallClimb2 : ORIGIN = 0x80056240, LENGTH = 0x100000
+    patchHandleFireBow1 : ORIGIN = 0x8004f968, LENGTH = 0x100000
+    patchHandleFireBow2 : ORIGIN = 0x8004f9a0, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -318,6 +322,46 @@ SECTIONS
         hookSparxSetPlayerHealth3.o(.data)
         hookSparxSetPlayerHealth3.o(.bss)
     } > hookSparxSetPlayerHealth3
+
+    /* Custom section for our hook code */
+    .patchHandleWallClimb1 : 
+    {
+        patchHandleWallClimb1.o(.text)
+        patchHandleWallClimb1.o(.rodata)
+        patchHandleWallClimb1.o(.rodata*)
+        patchHandleWallClimb1.o(.data)
+        patchHandleWallClimb1.o(.bss)
+    } > patchHandleWallClimb1
+
+    /* Custom section for our hook code */
+    .patchHandleWallClimb2 : 
+    {
+        patchHandleWallClimb2.o(.text)
+        patchHandleWallClimb2.o(.rodata)
+        patchHandleWallClimb2.o(.rodata*)
+        patchHandleWallClimb2.o(.data)
+        patchHandleWallClimb2.o(.bss)
+    } > patchHandleWallClimb2
+
+    /* Custom section for our hook code */
+    .patchHandleFireBow1 : 
+    {
+        patchHandleFireBow1.o(.text)
+        patchHandleFireBow1.o(.rodata)
+        patchHandleFireBow1.o(.rodata*)
+        patchHandleFireBow1.o(.data)
+        patchHandleFireBow1.o(.bss)
+    } > patchHandleFireBow1
+
+    /* Custom section for our hook code */
+    .patchHandleFireBow2 : 
+    {
+        patchHandleFireBow2.o(.text)
+        patchHandleFireBow2.o(.rodata)
+        patchHandleFireBow2.o(.rodata*)
+        patchHandleFireBow2.o(.data)
+        patchHandleFireBow2.o(.bss)
+    } > patchHandleFireBow2
 
     .MainCodecave : 
     {
