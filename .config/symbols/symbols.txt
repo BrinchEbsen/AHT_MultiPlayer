@@ -1,0 +1,2 @@
+/* This is where you would put your in game global variables you've found from a ram search/reverse engineering */
+game_symbol = 0x80001234;

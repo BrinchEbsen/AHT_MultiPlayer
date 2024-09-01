@@ -1,0 +1,3 @@
+D:/AHTmod/sys/main.dol
+Gamecube
+C:/Users/Ebbers/Documents/GC_CodeInject/C C++ Game Modding Utility/projects/game.iso
