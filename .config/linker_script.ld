@@ -38,6 +38,8 @@ MEMORY
     patchHandleWallClimb2 : ORIGIN = 0x80056240, LENGTH = 0x100000
     patchHandleFireBow1 : ORIGIN = 0x8004f968, LENGTH = 0x100000
     patchHandleFireBow2 : ORIGIN = 0x8004f9a0, LENGTH = 0x100000
+    hookSCPad : ORIGIN = 0x800e9ad0, LENGTH = 0x100000
+    hookINVPad : ORIGIN = 0x800e9b18, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -362,6 +364,26 @@ SECTIONS
         patchHandleFireBow2.o(.data)
         patchHandleFireBow2.o(.bss)
     } > patchHandleFireBow2
+
+    /* Custom section for our hook code */
+    .hookSCPad : 
+    {
+        hookSCPad.o(.text)
+        hookSCPad.o(.rodata)
+        hookSCPad.o(.rodata*)
+        hookSCPad.o(.data)
+        hookSCPad.o(.bss)
+    } > hookSCPad
+
+    /* Custom section for our hook code */
+    .hookINVPad : 
+    {
+        hookINVPad.o(.text)
+        hookINVPad.o(.rodata)
+        hookINVPad.o(.rodata*)
+        hookINVPad.o(.data)
+        hookINVPad.o(.bss)
+    } > hookINVPad
 
     .MainCodecave : 
     {

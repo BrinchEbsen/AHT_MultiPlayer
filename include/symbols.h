@@ -140,6 +140,13 @@ in_game void RandSetSeed(uint* _g_EXRandClass, uint set); //0x802f5088
 //Can be overridden for whatever specific setups a map might have.
 typedef EXVector* (*SE_Map_v_PlayerSetup)(int*, EXVector*, EXVector*);
 
+//The v_StateRunning method on the GUI_PanelItem class.
+//It handles the main drawing logic for the HUD elements.
+typedef int (*GUI_PanelItem_v_StateRunning_func)(int*);
+//v_StateRunning vtable entry for GUI_PanelItem
+in_game GUI_PanelItem_v_StateRunning_func vtable_GUI_PanelItem_v_StateRunning; //0x80445d28
+in_game int GUI_PanelItem_v_StateRunning(int* self); //0x8021eb3c
+
 //The Delete method on the XSEItemHandler class.
 //NOTE: The player subclass implementations also set the global references to NULL!
 typedef int (*ItemHandler_Delete)(int*);

@@ -7,6 +7,9 @@
 #include <symbols.h>
 #include <screenmath.h>
 
+int GUI_PanelItem_v_StateRunning_Hook(int* self);
+GUI_PanelItem_v_StateRunning_func GUI_PanelItem_v_StateRunning_hookFunc = GUI_PanelItem_v_StateRunning_Hook;
+
 XRGBA COLOR_BLANK = {0, 0, 0, 0};
 
 XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
@@ -39,12 +42,7 @@ XRGBA* HEALTH_COLORS_UPGRADE[] = {
     /*0xA0*/ &COLOR_P4
 };
 
-char* PLAYER_NAMES[] = {
-    "P1",
-    "P2",
-    "P3",
-    "P4"
-};
+char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
 
 Breaths PLAYER_BREATHS[] = {
     Breath_Fire,
@@ -53,12 +51,13 @@ Breaths PLAYER_BREATHS[] = {
     Breath_Fire
 };
 
-int PLAYER_HEALTH[] = {
-    0xA0,
-    0xA0,
-    0xA0,
-    0xA0
-};
+int PLAYER_HEALTH[] = { 0xA0, 0xA0, 0xA0, 0xA0 };
+
+bool PLAYER_SUPERCHARGE[] = {false, false, false, false};
+float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+
+bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
+float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
 
 #define CHARACTER_VTABLES_AMOUNT 8
 int CHARACTER_VTABLES[] = {
@@ -88,11 +87,13 @@ int notLoadedYetNotifTimer = 0;
 
 int breathSelectNotifTimer = 0;
 int playerWhoChangedBreath = 0;
+Breaths lastBreathChangedTo = Breath_Fire;
 
 int* cameraTargetItem = NULL;
 
 //Contains the itemhandler ID's for each of the four players. -1 if not in use.
 int players[4] = {-1, -1, -1, -1};
+int lastPlayerUpdated = 0;
 //Timers for how long each player has held down the button to restore control/visibility
 int player_restore_timers[4] = {0, 0, 0, 0};
 int player_restore_timer_max = 30;
@@ -222,6 +223,19 @@ int NumberOfPlayers() {
     }
 
     return count;
+}
+
+int GetPortNrFromPlayerHandler(int* handler) {
+    if (handler == NULL) { return 0; }
+
+    int ID = *(handler + 0x8/4);
+    for (int i = 0; i < 4; i++) {
+        if (players[i] == ID) {
+            return i;
+        }
+    }
+
+    return 0;
 }
 
 //Check if the given handler's vtable matches that of a player
@@ -501,7 +515,7 @@ void updateCameraTargetItem() {
 
 //Make sure the right pad is used for when the player is processed
 //Also sets the global references to make things work correctly
-void PlayerHandlerUpdate(int* self) {
+void PlayerHandlerPreUpdate(int* self) {
     gpPlayer = self;
     gpPlayerItem = (int*)(*self);
 
@@ -515,13 +529,57 @@ void PlayerHandlerUpdate(int* self) {
                 //Set the global breath to this player's breath
                 gPlayerState.CurrentBreath = PLAYER_BREATHS[i];
                 gPlayerState.Health = PLAYER_HEALTH[i];
+
+                if (PLAYER_INVINCIBILITY[i]) {
+                    gPlayerState.AbilityFlags |= Abi_Invincibility;
+                } else {
+                    gPlayerState.AbilityFlags &= ~Abi_Invincibility;
+                }
+                gPlayerState.InvincibleTimer = PLAYER_INVINCIBILITY_TIMER[i];
+
+                if (PLAYER_SUPERCHARGE[i]) {
+                    gPlayerState.AbilityFlags |= Abi_SuperCharge;
+                } else {
+                    gPlayerState.AbilityFlags &= ~Abi_SuperCharge;
+                }
+                gPlayerState.SuperchargeTimer = PLAYER_SUPERCHARGE_TIMER[i];
             }
         }
     }
 }
 
+void PlayerHandlerPostUpdate(int* self) {
+    //After the update, we store the playerstate globals that resulted from the update.
+    if (NumberOfPlayers() <= 1) { return; }
+
+    int ID = *(self + 0x8/4);
+    for (int i = 0; i < 4; i++) {
+        if (players[i] == ID) {
+            lastPlayerUpdated = i;
+
+            PLAYER_BREATHS[i] = gPlayerState.CurrentBreath;
+            PLAYER_HEALTH[i] = gPlayerState.Health;
+
+            PLAYER_INVINCIBILITY_TIMER[i] = gPlayerState.InvincibleTimer;
+            if ((gPlayerState.AbilityFlags & Abi_Invincibility) != 0) {
+                PLAYER_INVINCIBILITY[i] = true;
+            } else {
+                PLAYER_INVINCIBILITY[i] = false;
+            }
+
+            PLAYER_SUPERCHARGE_TIMER[i] = gPlayerState.SuperchargeTimer;
+            if ((gPlayerState.AbilityFlags & Abi_SuperCharge) != 0) {
+                PLAYER_SUPERCHARGE[i] = true;
+            } else {
+                PLAYER_SUPERCHARGE[i] = false;
+            }
+            break;
+        }
+    }
+}
+
 //Make sure player 1 is referenced when Sparx is updated
-void SparxUpdate(int* self) {
+void SparxPreUpdate(int* self) {
     if (players[0] == -1) { return; }
 
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[0], 0);
@@ -545,7 +603,7 @@ void SparxUpdate(int* self) {
 }
 
 //Every handler sets the global references to whichever player is closest
-void MiscHandlerUpdate(int* self) {
+void MiscHandlerPreUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
     int vtable = *(self + 0x4/4);
@@ -590,7 +648,7 @@ void MiscHandlerUpdate(int* self) {
 
 //Runs AFTER camera_follow's SEUpdate.
 //Manipulate camera variables to make them work with multiple players
-void CameraFollowUpdate(int* self) {
+void CameraFollowPostUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
 
@@ -696,13 +754,16 @@ void CameraFollowUpdate(int* self) {
 
 //main_hook.s | Runs every frame
 void MainUpdate() {
+    //Setup vtable hooks
+    vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_hookFunc;
+
     //If the gameloop isn't running, abort
     if (SE_GameLoop_State != 3) {
         return;
     }
 
-    if (NumberOfPlayers() > 1) {
-        gPlayerState.CurrentBreath = PLAYER_BREATHS[0];
+    if (NumberOfPlayers() == 1) {
+        PLAYER_BREATHS[0] = gPlayerState.CurrentBreath;
     }
 
     if (isButtonDown(Button_Dpad_Down, 0)) {
@@ -767,6 +828,14 @@ void DrawUpdate() {
             playerWhoChangedBreath+1, breathName
         );
         breathSelectNotifTimer--;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        textSmpPrintF(20, 200+(15*i), "%s | %.2f / %.2f",
+            (PLAYER_INVINCIBILITY[i] == true) ? "Y" : "N",
+            PLAYER_INVINCIBILITY_TIMER[i],
+            gPlayerState.InvincibleTimerMax
+        );
     }
 
     //If there are 2 or more players, display names above the players.
@@ -866,20 +935,12 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     int ID = *(self + 0x8/4);
 
     if (HandlerIsPlayer(self)) {
-        //This function will set the global variables to the player's personal one
-        PlayerHandlerUpdate(self);
+        //This function will set the playerstate globals to the player's personal one
+        PlayerHandlerPreUpdate(self);
 
         bool res = ItemHandler_SEUpdate(self);
 
-        //After the update, we store the selected breath and health that resulted from the update.
-        int portNr = 0;
-        for (int i = 0; i < 4; i++) {
-            if (players[i] == ID) {
-                PLAYER_BREATHS[i] = gPlayerState.CurrentBreath;
-                PLAYER_HEALTH[i] = gPlayerState.Health;
-                break;
-            }
-        }
+        PlayerHandlerPostUpdate(self);
 
         g_PadNum = 0;
         return res;
@@ -889,16 +950,17 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
 
         bool res = ItemHandler_SEUpdate(self);
 
-        CameraFollowUpdate(self);
+        CameraFollowPostUpdate(self);
 
         g_PadNum = 0;
         return res;
     } else if (vtable == SPARX_VTABLE) {
-        SparxUpdate(self);
+        SparxPreUpdate(self);
     } else {
-        MiscHandlerUpdate(self);
+        MiscHandlerPreUpdate(self);
     }
 
+    //This is only reached if each case doesn't return on its own
     bool res = ItemHandler_SEUpdate(self);
 
     //Return control to player 1 after updating
@@ -928,6 +990,7 @@ bool TestBreathChangeHook(int* self) {
             //Set notification settings
             playerWhoChangedBreath = player;
             breathSelectNotifTimer = 60;
+            lastBreathChangedTo = gPlayerState.CurrentBreath;
         }
     }
 
@@ -969,4 +1032,66 @@ void urghhhImDead() {
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
     PLAYER_HEALTH[3] = 0xA0;
+}
+
+void GadgetPad_SuperCharge_Hook() {
+    if (gpPlayer == NULL) { return; }
+
+    //At this point, the global references should be the player closest to the pad
+    int portNr = GetPortNrFromPlayerHandler(gpPlayer);
+
+    PLAYER_SUPERCHARGE[portNr] = (gPlayerState.AbilityFlags & Abi_SuperCharge) != 0;
+    PLAYER_SUPERCHARGE_TIMER[portNr] = gPlayerState.SuperchargeTimer; 
+}
+
+void GadgetPad_Invincibility_Hook() {
+    if (gpPlayer == NULL) { return; }
+
+    //At this point, the global references should be the player closest to the pad
+    int portNr = GetPortNrFromPlayerHandler(gpPlayer);
+
+    PLAYER_INVINCIBILITY[portNr] = (gPlayerState.AbilityFlags & Abi_Invincibility) != 0;
+    PLAYER_INVINCIBILITY_TIMER[portNr] = gPlayerState.InvincibleTimer;
+}
+
+//Edit behavior of icons when running in multiplayer
+int GUI_PanelItem_v_StateRunning_Hook(int* self) {
+    //Normal behavior if singleplayer
+    if (NumberOfPlayers() <= 1) { return GUI_PanelItem_v_StateRunning(self); }
+    
+    //Store values we don't want displayed on the HUD and set them to zero
+
+    //Store breath
+    Breaths tempBreath = gPlayerState.CurrentBreath;
+    gPlayerState.CurrentBreath = lastBreathChangedTo;
+
+    //Store invincibility
+    PlayerAbilities tempInv = gPlayerState.AbilityFlags & Abi_Invincibility;
+    gPlayerState.AbilityFlags &= ~Abi_Invincibility;
+    float tempInvTimer = gPlayerState.InvincibleTimer;
+    gPlayerState.InvincibleTimer = 0;
+
+    //Store supercharge
+    PlayerAbilities tempSup = gPlayerState.AbilityFlags & Abi_SuperCharge;
+    gPlayerState.AbilityFlags &= ~Abi_SuperCharge;
+    float tempSupTimer = gPlayerState.SuperchargeTimer;
+    gPlayerState.SuperchargeTimer = 0;
+
+    //Execute update
+    int res = GUI_PanelItem_v_StateRunning(self);
+
+    //Restore the values to their pre-update state
+
+    //Restore breath
+    gPlayerState.CurrentBreath = tempBreath;
+
+    //Restore invincibility
+    gPlayerState.AbilityFlags |= tempInv;
+    gPlayerState.InvincibleTimer = tempInvTimer;
+
+    //Restore supercharge
+    gPlayerState.AbilityFlags |= tempSup;
+    gPlayerState.SuperchargeTimer = tempSupTimer;
+
+    return res;
 }
