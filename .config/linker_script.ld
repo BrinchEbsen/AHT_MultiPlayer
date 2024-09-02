@@ -5,7 +5,7 @@ INPUT(../../../.config/symbols/auto_symbols.txt)
 MEMORY
 {
     /* RAM locations where we'll inject the code for our replacement functions */
-    MainCodecave : ORIGIN = 0x803D8FB0, LENGTH = 0x2010
+    MainCodecave : ORIGIN = 0x80296618, LENGTH = 0x7DCC
     patchFPMode1 : ORIGIN = 0x8005ca40, LENGTH = 0x100000
     patchFPMode2 : ORIGIN = 0x8005c9fc, LENGTH = 0x100000
     patchHandleCharge : ORIGIN = 0x800a16ac, LENGTH = 0x100000
