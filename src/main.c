@@ -170,8 +170,10 @@ char* GetBreathName(Breaths breath) {
 }
 
 XRGBA* GetHealthColor(int health) {
+    //Sparx' colors are different depending on if the upgrade has been bought
     bool gottenUpgrade = (gAbilityFlags & 4) != 0;
 
+    //Each unit of health is 0x20
     int index = health/0x20;
 
     if (gottenUpgrade) {
@@ -209,6 +211,7 @@ uint getPlayerSkinHash(int* handler) {
     return *(skinAnim + (0xD0/4));
 }
 
+//Get the number of player items currently referenced
 int NumberOfPlayers() {
     int count = 0;
 
@@ -221,6 +224,7 @@ int NumberOfPlayers() {
     return count;
 }
 
+//Check if the given handler's vtable matches that of a player
 bool HandlerIsPlayer(int* handler) {
     int vtable = *(handler + 0x4/4);
 
@@ -251,6 +255,7 @@ int GetArrayOfPlayerHandlers(int** list) {
     return listindex;
 }
 
+//Reset all player references and search the item list to populate it again.
 void initializePlayers() {
     players[0] = -1;
     players[1] = -1;
@@ -290,12 +295,14 @@ void updatePlayerList() {
             int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
 
             if (handler == NULL) {
+                //This handler has unloaded, reset reference
                 players[i] = -1;
             }
         }
     }
 
     if (allEmpty) {
+        //No players were found, do a full search of the item list to find some
         initializePlayers();
     }
 }
@@ -313,10 +320,10 @@ void addNewPlayer(int portNr) {
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[0], 0);
     if (handler == NULL) { return; }
 
-    //Get item handler
+    //Get item
     int* item = (int*)(*handler);
 
-    //Get position, but a bit up and to the side
+    //New player is spawned above and to the side of player 1
     EXVector* pos = (EXVector*) (item + (0xD0/4));
     EXVector v = {
         pos->x + 2.0,
@@ -369,6 +376,7 @@ void addNewPlayer(int portNr) {
 }
 
 //Remove player (2, 3 or 4) and set player 1 as the global referent
+//THIS CRASHES THE GAME!!! Character file is unloaded, leading to invalid file ref for the other players.
 void removePlayer(int portNr) {
     //Only perform on players 2, 3 and 4
     if ((portNr < 1) || (portNr > 3)) { return; }
@@ -404,9 +412,9 @@ void restorePlayerControl(int portNr) {
     Player_SetVisibility(handler, true);
     Player_UnlockControls(handler);
 
-    //If the current mode is "listen" (cutscene), set it to "breathe" (idle) instead.
+    //If the current mode is "listen/listen_water" (cutscene), set it to "breathe" (idle) instead.
     int mode = *(handler + (0x834/4));
-    if (mode == 3) {
+    if ((mode == 3) || (mode == 4)) {
         Player_SetMode(handler, 1, 0, 0);
     }
 }
@@ -425,7 +433,6 @@ void teleportPlayersToPlayer(int portNr) {
     int* item = (int*) *handler;
     EXVector* pos = (EXVector*) (item + (0xD0/4));
 
-    //ig_printf("teleporting %d players to player %d\n", count-1, portNr);
     for (int i = 0; i < count; i++) {
         if (i == portNr) { continue; } //ignore self
 
@@ -466,6 +473,7 @@ int whoShouldControlCamera() {
     return port;
 }
 
+//Checks if the given item is found in the item list
 bool itemExists(int* item) {
     if (item == NULL) { return false; }
 
@@ -484,8 +492,8 @@ bool itemExists(int* item) {
     return true;
 }
 
+//Create camera target item if it doesn't exist or if it's uninitialized
 void updateCameraTargetItem() {
-    //Check if it's uninitialized or if it doesn't exist anymore
     if (!itemExists(cameraTargetItem)) {
         cameraTargetItem = XSEItem_CreateObject();
     }
@@ -541,10 +549,6 @@ void MiscHandlerUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
     int vtable = *(self + 0x4/4);
-
-    //if (vtable == BLINKYBULLET_VTABLE) {
-    //    ig_printf("Checking closest player...\n");
-    //}
     
     if (count != 0) {
         //Keep track of the closest item so far
@@ -577,25 +581,14 @@ void MiscHandlerUpdate(int* self) {
             }
         }
 
-        
-        //if (vtable == BLINKYBULLET_VTABLE) {
-        //    ig_printf(
-        //        "[BLINKYBULLET]: I found the closest item to my position (%.2f, %.2f, %.2f) to be %x (%.2f units away)\n",
-        //        pos->x, pos->y, pos->z, closest, closestDist
-        //    );
-        //}
-
         if (closest != NULL) {
             gpPlayer = closest;
             gpPlayerItem = (int*)(*closest);
         }
-    } else {
-        //if (vtable == BLINKYBULLET_VTABLE) {
-        //    ig_printf("Found no players!\n");
-        //}
     }
 }
 
+//Runs AFTER camera_follow's SEUpdate.
 //Manipulate camera variables to make them work with multiple players
 void CameraFollowUpdate(int* self) {
     int* list[4];
@@ -688,14 +681,14 @@ void CameraFollowUpdate(int* self) {
     if (cameraTargetItem != NULL) {
         int** targetItem = (int**) (self + (0x398/4));
         *targetItem = cameraTargetItem;
+
+        EXVector* targetPos = (EXVector*) (cameraTargetItem + (0xD0/4));
+
+        //Set the target item's position to our middle vector
+        targetPos->x = middle.x;
+        targetPos->y = middle.y;
+        targetPos->z = middle.z;
     }
-
-    EXVector* targetPos = (EXVector*) (cameraTargetItem + (0xD0/4));
-
-    //Set the target item's position to our middle vector
-    targetPos->x = middle.x;
-    targetPos->y = middle.y;
-    targetPos->z = middle.z;
 
     uint* collideFlags = (uint*) (self + (0x404/4));
     *collideFlags |= 2;
@@ -723,6 +716,7 @@ void MainUpdate() {
 
     updatePlayerList();
 
+    //Skip checking for any input if the first player doesn't exist
     if (players[0] == -1) { return; }
 
     for (int i = 0; i < 4; i++) {
@@ -731,10 +725,8 @@ void MainUpdate() {
                 addNewPlayer(i);
             }
         } else {
-            if (i == 0) {
-                if (checkZDoublePress(0)) {
-                    teleportPlayersToPlayer(0);
-                }
+            if (checkZDoublePress(i)) {
+                teleportPlayersToPlayer(i);
             }
 
             if (isButtonDown(Button_Dpad_Up, i)) {
@@ -755,17 +747,19 @@ void MainUpdate() {
 //draw_hook.s | Runs every frame during the HUD draw loop
 //Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
-
+    //Notification for a character not having loaded yet
     if (notLoadedYetNotifTimer > 0) {
         textPrint("Not loaded yet, please wait...", 0, 20, 100, TopLeft, &COLOR_LIGHT_RED, 1.0f);
         notLoadedYetNotifTimer--;
     }
 
+    //Notification for a player joining
     if (playerJoinedNotifTimer > 0) {
         textPrintF(0, 250, Centre, PLAYER_COLORS[playerWhoJoined], 1.3f, "Player %d has joined", playerWhoJoined+1);
         playerJoinedNotifTimer--;
     }
 
+    //Notification for a player selecting a breath
     if (breathSelectNotifTimer > 0) {
         char* breathName = GetBreathName(PLAYER_BREATHS[playerWhoChangedBreath]);
 
@@ -775,16 +769,18 @@ void DrawUpdate() {
         breathSelectNotifTimer--;
     }
 
+    //If there are 2 or more players, display names above the players.
     if (NumberOfPlayers() > 1) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
                 int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
                 if (handler == NULL) { continue; }
                 
+                //Get item and position
                 int* item = (int*) *handler;
-
                 EXVector* playerPos = (EXVector*) (item + (0xD0/4));
 
+                //Display info 2 units above character pos
                 EXVector pos = {
                     .x = playerPos->x,
                     .y = playerPos->y + 2.0,
@@ -792,25 +788,27 @@ void DrawUpdate() {
                     .w = playerPos->w
                 };
 
+                //Get the screen position for the position
                 EXVector2 screenPos = {0.0};
                 WorldToDisp(&screenPos, &pos);
 
+                //Position to display name
                 EXVector2 textPos = {
                     .x = screenPos.x - 10.0,
                     .y = screenPos.y - 30.0
                 };
 
-                //if ((screenPos.x < 0.0) || (screenPos.y < 0.0)) {
-                //    continue;
-                //}
-
+                //Render if in a valid screen position
                 if (isInFrontOfCam(&pos) && isWithinFrame(&screenPos)) {
+                    //Name
                     textPrint(
                         PLAYER_NAMES[i], 0,
                         (int)textPos.x,
                         (int)textPos.y,
                         TopLeft, PLAYER_COLORS[i], 1.0f
                     );
+
+                    //Health indicator
 
                     EXRect r = {
                         (int) screenPos.x -3 - 18,
@@ -821,7 +819,7 @@ void DrawUpdate() {
 
                     XRGBA* col = GetHealthColor(PLAYER_HEALTH[i]);
                     
-                    //Logic to make the health square flash red if player is on 1HP
+                    //Logic to make the indicator flash red if player is on 1HP
                     static int flashingTimer = 0;
                     flashingTimer++;
                     if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
@@ -868,12 +866,12 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     int ID = *(self + 0x8/4);
 
     if (HandlerIsPlayer(self)) {
-        //This function will set the global breath to the player's personal one
+        //This function will set the global variables to the player's personal one
         PlayerHandlerUpdate(self);
 
         bool res = ItemHandler_SEUpdate(self);
 
-        //After the update, we store the selected breath that resulted from the update.
+        //After the update, we store the selected breath and health that resulted from the update.
         int portNr = 0;
         for (int i = 0; i < 4; i++) {
             if (players[i] == ID) {
@@ -886,7 +884,7 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
         g_PadNum = 0;
         return res;
     } else if (vtable == CAMERA_FOLLOW_VTABLE) {
-        //Make player 1 control the camera
+        //Make the player moving the stick the most control the camera
         g_PadNum = whoShouldControlCamera();
 
         bool res = ItemHandler_SEUpdate(self);
@@ -908,10 +906,14 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     return res;
 }
 
+//Runs before the game checks for the player changing breath
+//Only used for the "player changed breath" notification on the HUD
 bool TestBreathChangeHook(int* self) {
+    //Check if the breath changed before running any logic
     bool changed = Spyro_TestBreathChange(self);
 
     if (changed) {
+        //Search for the player who changed breath
         int player = -1;
         int ID = *(self + 0x8/4);
 
@@ -922,7 +924,8 @@ bool TestBreathChangeHook(int* self) {
             }
         }
 
-        if (player >= 0) {
+        if (player != -1) {
+            //Set notification settings
             playerWhoChangedBreath = player;
             breathSelectNotifTimer = 60;
         }
@@ -931,13 +934,17 @@ bool TestBreathChangeHook(int* self) {
     return changed;
 }
 
-//After sparx eats a butterfly
+//After sparx eats a butterfly (add 1 unit of health to all players)
 void Sparx_SetPlayerHealth_Hook(int* self, int health) {
+    //Check if we should use the multiplayer health mode
     if (NumberOfPlayers() > 1) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
+                //Get the player's stored health
                 gHealth = PLAYER_HEALTH[i];
+                //Add 1 unit of health
                 PlayerState_SetHealth(self, gHealth + 0x20);
+                //Save the resulting health value to the player
                 PLAYER_HEALTH[i] = gHealth;
             }
         }
@@ -957,6 +964,7 @@ void Butterfly_Special_SetHealth_Hook(int* self, int health) {
 
 //Runs after the "urghhhImDead" function for Spyro, Blink and Hunter.
 void urghhhImDead() {
+    gHealth = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
