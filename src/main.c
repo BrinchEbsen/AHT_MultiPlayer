@@ -78,6 +78,7 @@ int SPYRO_VTABLE = 0x8040B908;
 int SPARX_VTABLE = 0x8040f8b0;
 int CAMERA_FOLLOW_VTABLE = 0x804161b0;
 int BLINKYBULLET_VTABLE = 0x80408988;
+int LOCKEDCHEST_VTABLE = 0x80429b18;
 
 bool initialized = false;
 bool showDebug = false;
@@ -94,6 +95,8 @@ Breaths lastBreathChangedTo = Breath_Fire;
 
 int* cameraTargetItem = NULL;
 
+int playerJoinCooldownTimer = 0;
+
 //Contains the itemhandler ID's for each of the four players. -1 if not in use.
 int players[4] = {-1, -1, -1, -1};
 int lastPlayerUpdated = 0;
@@ -103,29 +106,29 @@ int player_restore_timer_max = 30;
 
 //Check for the Z button being pressed twice within 20 frames at the given pad number
 bool checkZDoublePress(int padNr) {
-    static int numPressed = 0;
-    static int timer = 0;
+    static int numPressed[] = {0, 0, 0, 0};
+    static int timer[] = {0, 0, 0, 0};
 
     bool zPressed = isButtonPressed(Button_Z, padNr);
 
-    if (numPressed == 0 && !zPressed) {
+    if (numPressed[padNr] == 0 && !zPressed) {
         //Have not pressed and am not pressing
-        timer = 0;
+        timer[padNr] = 0;
 
         return false;
     }
 
     //Have either pressed it before or am pressing now
-    timer++;
+    timer[padNr]++;
 
     //If timer is within the limit
-    if (timer <= 20) {
-        if (zPressed) { numPressed++; }
+    if (timer[padNr] <= 20) {
+        if (zPressed) { numPressed[padNr]++; }
 
-        if (numPressed >= 2) {
+        if (numPressed[padNr] >= 2) {
             //Have successfully double-pressed
-            timer = 0;
-            numPressed = 0;
+            timer[padNr] = 0;
+            numPressed[padNr] = 0;
 
             return true;
         }
@@ -133,8 +136,8 @@ bool checkZDoublePress(int padNr) {
         return false;
     } else {
         //Timer expired
-        timer = 0;
-        numPressed = 0;
+        timer[padNr] = 0;
+        numPressed[padNr] = 0;
     
         return false;
     }
@@ -239,6 +242,17 @@ int GetPortNrFromPlayerHandler(int* handler) {
     }
 
     return 0;
+}
+
+bool SetPlayerRefToPort(int portNr) {
+    int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
+    if (handler == NULL) { return false; }
+
+    g_PadNum = portNr;
+    gpPlayer = handler;
+    gpPlayerItem = (int*) *handler;
+
+    return true;
 }
 
 //Check if the given handler's vtable matches that of a player
@@ -874,11 +888,18 @@ void MainUpdate() {
     updatePlayerList();
 
     //Skip checking for any input if the first player doesn't exist
-    if (players[0] == -1) { return; }
+    //Set a cooldown timer so other players can't join within a short period of the first player joining
+    if (players[0] == -1) {
+        playerJoinCooldownTimer = 20;
+        return;
+    } else {
+        playerJoinCooldownTimer--;
+        if (playerJoinCooldownTimer < 0) { playerJoinCooldownTimer = 0; }
+    }
 
     for (int i = 0; i < 4; i++) {
         if (players[i] == -1) {
-            if (isButtonPressed(Button_A, i)) {
+            if (isButtonPressed(Button_A, i) && (playerJoinCooldownTimer == 0)) {
                 addNewPlayer(i);
             }
         } else {
@@ -997,7 +1018,10 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
         return res;
     } else if (vtable == SPARX_VTABLE) {
         SparxPreUpdate(self);
-    } else {
+    } else if (vtable == LOCKEDCHEST_VTABLE) {
+        SetPlayerRefToPort(0);
+    } else    
+    {
         MiscHandlerPreUpdate(self);
     }
 
