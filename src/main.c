@@ -171,7 +171,7 @@ char* GetBreathName(Breaths breath) {
 
 XRGBA* GetHealthColor(int health) {
     //Sparx' colors are different depending on if the upgrade has been bought
-    bool gottenUpgrade = (gPlayerState.AbilityFlags & 4) != 0;
+    bool gottenUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
 
     //Each unit of health is 0x20
     int index = health/0x20;
@@ -341,12 +341,12 @@ void addNewPlayer(int portNr) {
     setupFunc(map, &v, rot);
 
     //get the "player" field in the global PlayerSetup
-    Players* playerSetup_Player = 0x80465BE0;
+    Players* setup_Player = &gPlayerState.Setup.Player;
 
     //Ensure the player is loaded/loading
-    PlayerLoader_PreLoad(&gPlayerLoader, *playerSetup_Player);
+    PlayerLoader_PreLoad(&gPlayerLoader, *setup_Player);
     //Check if it's loaded, set a notification and abort if not.
-    if (!PlayerLoader_IsLoaded(&gPlayerLoader, *playerSetup_Player)) {
+    if (!PlayerLoader_IsLoaded(&gPlayerLoader, *setup_Player)) {
         notLoadedYetNotifTimer = 60;
         return;
     } else {
@@ -354,11 +354,11 @@ void addNewPlayer(int portNr) {
     }
 
     //If the player is set to be Spyro, make it Ember for port 2 and Flame for port 3
-    if (*playerSetup_Player == Player_Spyro) {
+    if (*setup_Player == Player_Spyro) {
         if (portNr == 1) {
-            *playerSetup_Player = Player_Ember;
+            *setup_Player = Player_Ember;
         } else if (portNr == 2) {
-            *playerSetup_Player = Player_Flame;
+            *setup_Player = Player_Flame;
         }
     }
 

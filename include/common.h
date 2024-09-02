@@ -291,6 +291,30 @@ enum PlayerModes
 };
 typedef enum PlayerModes PlayerModes;
 
+enum PlayerAbilities
+{
+    Abi_DoubleJump = 0x1,
+    //Abi_UNK0 = 0x2,
+    Abi_HitPointUpgrade = 0x4,
+    //Abi_UNK1 = 0x8,
+    Abi_PoleSpin = 0x10,
+    Abi_IceBreath = 0x20,
+    Abi_ElectricBreath = 0x40,
+    Abi_WaterBreath = 0x80,
+    //Abi_UNK2 = 0x100,
+    Abi_DoubleGem = 0x200,
+    //Abi_UNK3 = 0x400,
+    Abi_Aqualung = 0x800,
+    Abi_SuperCharge = 0x1000,
+    Abi_Invincibility = 0x2000,
+    Abi_ShopSellsEverything = 0x4000,
+    Abi_WingShield = 0x8000,
+    Abi_WallKick = 0x10000,
+    Abi_HornDiveUpgrade = 0x20000,
+    Abi_ButterflyJar = 0x40000,
+};
+typedef enum PlayerAbilities PlayerAbilities;
+
 //Buttons
 
 enum Buttons

@@ -49,7 +49,7 @@ struct PlayerState
     byte ElectricBombs_Magazines;
     short Xarrows;
     short Xarrows_Max;
-    uint AbilityFlags;
+    PlayerAbilities AbilityFlags;
     float WaterDiveTimer; //Unused
     float SuperchargeTimer;
     float SuperchargeTimerMax;
