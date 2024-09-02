@@ -172,6 +172,7 @@ in_game int Player_Delete(int* self); //0x80058278
 in_game bool Spyro_TestBreathChange(int* self); //0x8008ae04
 
 in_game void PlayerState_SetHealth(int* self, int health); //0x800689c0
+in_game void PlayerState_RestartGame(int* self); //0x800687ec
 
 //Create a player according to the current PlayerSetup, returns the new object.
 in_game int* CreatePlayer(int* self); //0x8005b858

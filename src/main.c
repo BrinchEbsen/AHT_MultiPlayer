@@ -89,6 +89,9 @@ int playerWhoJoined = 0;
 
 int notLoadedYetNotifTimer = 0;
 
+int restartGameTimer = 0;
+int restartGameTimerMax = 80;
+
 int breathSelectNotifTimer = 0;
 int playerWhoChangedBreath = 0;
 Breaths lastBreathChangedTo = Breath_Fire;
@@ -885,6 +888,20 @@ void MainUpdate() {
         showDebugTimer = 0;
     }
 
+    //If player 1 is holding down dpad left, reset health and restart game.
+    if (isButtonDown(Button_Dpad_Left, 0)) {
+        restartGameTimer++;
+        if (restartGameTimer >= restartGameTimerMax) {
+            urghhhImDead();
+            PlayerState_RestartGame(&gPlayerState);
+        }
+        if (restartGameTimer > restartGameTimerMax) {
+            restartGameTimer = restartGameTimerMax;
+        }
+    } else {
+        restartGameTimer = 0;
+    }
+
     updatePlayerList();
 
     //Skip checking for any input if the first player doesn't exist
@@ -903,6 +920,8 @@ void MainUpdate() {
                 addNewPlayer(i);
             }
         } else {
+            
+
             if (checkZDoublePress(i)) {
                 teleportPlayersToPlayer(i);
             }
@@ -947,13 +966,22 @@ void DrawUpdate() {
         breathSelectNotifTimer--;
     }
 
-    //for (int i = 0; i < 4; i++) {
-    //    textSmpPrintF(20, 200+(15*i), "%s | %.2f / %.2f",
-    //        (PLAYER_INVINCIBILITY[i] == true) ? "Y" : "N",
-    //        PLAYER_INVINCIBILITY_TIMER[i],
-    //        gPlayerState.InvincibleTimerMax
-    //    );
-    //}
+    if (restartGameTimer > 0) {
+        textPrint("Restarting...", 0, 20, 300, TopLeft, &COLOR_LIGHT_RED, 1.2);
+
+        EXRect r = {
+            .x = 20,
+            .y = 330,
+            .w = 120,
+            .h = 20
+        };
+
+        Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
+
+        r.w = (float)r.w * ((float)restartGameTimer / (float)restartGameTimerMax);
+
+        Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
+    }
 
     //If there are 2 or more players, display names above the players.
     if (NumberOfPlayers() > 1) {

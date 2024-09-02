@@ -79,6 +79,7 @@ FileManager_IsGeoLoaded = 0x8022db20;
 Player_Delete = 0x80058278;
 Spyro_TestBreathChange = 0x8008ae04;
 PlayerState_SetHealth = 0x800689c0;
+PlayerState_RestartGame = 0x800687ec;
 CreatePlayer = 0x8005b858;
 Player_SetMode = 0x80058414;
 Player_SetVisibility = 0x80060844;
