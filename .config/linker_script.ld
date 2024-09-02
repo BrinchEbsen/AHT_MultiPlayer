@@ -40,6 +40,8 @@ MEMORY
     patchHandleFireBow2 : ORIGIN = 0x8004f9a0, LENGTH = 0x100000
     hookSCPad : ORIGIN = 0x800e9ad0, LENGTH = 0x100000
     hookINVPad : ORIGIN = 0x800e9b18, LENGTH = 0x100000
+    patchHandleSuperCharge1 : ORIGIN = 0x800a1e4c, LENGTH = 0x100000
+    patchHandleSuperCharge2 : ORIGIN = 0x800a1d6c, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -384,6 +386,26 @@ SECTIONS
         hookINVPad.o(.data)
         hookINVPad.o(.bss)
     } > hookINVPad
+
+    /* Custom section for our hook code */
+    .patchHandleSuperCharge1 : 
+    {
+        patchHandleSuperCharge1.o(.text)
+        patchHandleSuperCharge1.o(.rodata)
+        patchHandleSuperCharge1.o(.rodata*)
+        patchHandleSuperCharge1.o(.data)
+        patchHandleSuperCharge1.o(.bss)
+    } > patchHandleSuperCharge1
+
+    /* Custom section for our hook code */
+    .patchHandleSuperCharge2 : 
+    {
+        patchHandleSuperCharge2.o(.text)
+        patchHandleSuperCharge2.o(.rodata)
+        patchHandleSuperCharge2.o(.rodata*)
+        patchHandleSuperCharge2.o(.data)
+        patchHandleSuperCharge2.o(.bss)
+    } > patchHandleSuperCharge2
 
     .MainCodecave : 
     {
