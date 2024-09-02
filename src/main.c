@@ -412,9 +412,9 @@ void restorePlayerControl(int portNr) {
     Player_SetVisibility(handler, true);
     Player_UnlockControls(handler);
 
-    //If the current mode is "listen/listen_water" (cutscene), set it to "breathe" (idle) instead.
-    int mode = *(handler + (0x834/4));
-    if ((mode == 3) || (mode == 4)) {
+    //If the current mode is "cutscene", set it to idle instead.
+    PlayerModes mode = *(handler + (0x834/4));
+    if ((mode == listen) || (mode == listen_water)) {
         Player_SetMode(handler, 1, 0, 0);
     }
 }
