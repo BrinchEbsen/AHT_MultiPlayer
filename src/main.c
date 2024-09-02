@@ -17,6 +17,9 @@ XRGBA COLOR_P2 = {0x80, 0x20, 0x20, 0x80}; //Red
 XRGBA COLOR_P3 = {0x08, 0x60, 0x00, 0x80}; //Green
 XRGBA COLOR_P4 = {0x80, 0x50, 0x00, 0x80}; //Yellow
 
+XRGBA COLOR_INV = {0x40, 0x40, 0x80, 0x80};
+XRGBA COLOR_SUP = {0x80, 0x40, 0x40, 0x80};
+
 XRGBA* PLAYER_COLORS[] = {
     &COLOR_P1,
     &COLOR_P2,
@@ -752,6 +755,99 @@ void CameraFollowPostUpdate(int* self) {
     *collideFlags |= 2;
 }
 
+//Draw the player's name, health and powerup status
+void DrawPlayerMarker(int portNr) {
+    int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
+    if (handler == NULL) { return; }
+    
+    //Get item and position
+    int* item = (int*) *handler;
+    EXVector* playerPos = (EXVector*) (item + (0xD0/4));
+
+    //Display info 2 units above character pos
+    EXVector pos = {
+        .x = playerPos->x,
+        .y = playerPos->y + 2.0,
+        .z = playerPos->z,
+        .w = playerPos->w
+    };
+
+    //Get the screen position for the position
+    EXVector2 screenPos = {0.0};
+    WorldToDisp(&screenPos, &pos);
+
+    //Position to display name
+    EXVector2 textPos = {
+        .x = screenPos.x - 10.0,
+        .y = screenPos.y - 30.0
+    };
+
+    //Render if in a valid screen position
+    if (isInFrontOfCam(&pos) && isWithinFrame(&screenPos)) {
+        //Name
+        textPrint(
+            PLAYER_NAMES[portNr], 0,
+            (int)textPos.x,
+            (int)textPos.y,
+            TopLeft, PLAYER_COLORS[portNr], 1.0f
+        );
+
+        //Health indicator
+
+        EXRect r = {
+            (int) screenPos.x -3 - 18,
+            (int) screenPos.y -3 - 20,
+            6,
+            6
+        };
+
+        XRGBA* col = GetHealthColor(PLAYER_HEALTH[portNr]);
+        
+        //Logic to make the indicator flash red if player is on 1HP
+        static int flashingTimer = 0;
+        flashingTimer++;
+        if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
+            col = &COLOR_RED;
+        }
+        if (flashingTimer > 40) { flashingTimer = 0; }
+
+        Util_DrawRect(gpPanelWnd, &r, col);
+
+        //Powerup status
+
+        XRGBA* powerUpCol = NULL;
+        float current;
+        float max;
+
+        if (PLAYER_INVINCIBILITY[portNr]) {
+            powerUpCol = &COLOR_INV;
+            current = PLAYER_INVINCIBILITY_TIMER[portNr];
+            max = gPlayerState.InvincibleTimerMax;
+        } else if (PLAYER_SUPERCHARGE[portNr]) {
+            powerUpCol = &COLOR_SUP;
+            current = PLAYER_SUPERCHARGE_TIMER[portNr];
+            max = gPlayerState.SuperchargeTimerMax;
+        }
+
+        if (powerUpCol != NULL) {
+            static size = 30;
+
+            EXRect r = {
+                (int) screenPos.x - 18,
+                (int) screenPos.y - 37,
+                size,
+                6
+            };
+
+            Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
+
+            r.w *= (current/max);
+
+            Util_DrawRect(gpPanelWnd, &r, powerUpCol);
+        }
+    }
+}
+
 //main_hook.s | Runs every frame
 void MainUpdate() {
     //Setup vtable hooks
@@ -830,74 +926,19 @@ void DrawUpdate() {
         breathSelectNotifTimer--;
     }
 
-    for (int i = 0; i < 4; i++) {
-        textSmpPrintF(20, 200+(15*i), "%s | %.2f / %.2f",
-            (PLAYER_INVINCIBILITY[i] == true) ? "Y" : "N",
-            PLAYER_INVINCIBILITY_TIMER[i],
-            gPlayerState.InvincibleTimerMax
-        );
-    }
+    //for (int i = 0; i < 4; i++) {
+    //    textSmpPrintF(20, 200+(15*i), "%s | %.2f / %.2f",
+    //        (PLAYER_INVINCIBILITY[i] == true) ? "Y" : "N",
+    //        PLAYER_INVINCIBILITY_TIMER[i],
+    //        gPlayerState.InvincibleTimerMax
+    //    );
+    //}
 
     //If there are 2 or more players, display names above the players.
     if (NumberOfPlayers() > 1) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
-                int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
-                if (handler == NULL) { continue; }
-                
-                //Get item and position
-                int* item = (int*) *handler;
-                EXVector* playerPos = (EXVector*) (item + (0xD0/4));
-
-                //Display info 2 units above character pos
-                EXVector pos = {
-                    .x = playerPos->x,
-                    .y = playerPos->y + 2.0,
-                    .z = playerPos->z,
-                    .w = playerPos->w
-                };
-
-                //Get the screen position for the position
-                EXVector2 screenPos = {0.0};
-                WorldToDisp(&screenPos, &pos);
-
-                //Position to display name
-                EXVector2 textPos = {
-                    .x = screenPos.x - 10.0,
-                    .y = screenPos.y - 30.0
-                };
-
-                //Render if in a valid screen position
-                if (isInFrontOfCam(&pos) && isWithinFrame(&screenPos)) {
-                    //Name
-                    textPrint(
-                        PLAYER_NAMES[i], 0,
-                        (int)textPos.x,
-                        (int)textPos.y,
-                        TopLeft, PLAYER_COLORS[i], 1.0f
-                    );
-
-                    //Health indicator
-
-                    EXRect r = {
-                        (int) screenPos.x -3 - 18,
-                        (int) screenPos.y -3 - 20,
-                        6,
-                        6
-                    };
-
-                    XRGBA* col = GetHealthColor(PLAYER_HEALTH[i]);
-                    
-                    //Logic to make the indicator flash red if player is on 1HP
-                    static int flashingTimer = 0;
-                    flashingTimer++;
-                    if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
-                        col = &COLOR_RED;
-                    }
-                    if (flashingTimer > 40) { flashingTimer = 0; }
-
-                    Util_DrawRect(gpPanelWnd, &r, col);
-                }
+                DrawPlayerMarker(i);
             }
         }
     }
