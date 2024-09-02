@@ -149,11 +149,6 @@ in_game float Camera_Follow_Elevation_Default; //0x803bf66c
 
 in_game bool ItemHandler_SEKill(int* self); //0x80242210
 
-//NOTE: Also start of PlayerState struct
-in_game Breaths gCurrentBreath; //0x80465b60
-in_game int gHealth; //0x80465B64
-in_game uint gAbilityFlags; //0x80465b88
-
 in_game int gPlayerLoader; //0x804cc464
 
 in_game bool PlayerLoader_IsLoaded(int* _gPlayerLoader, Players Player); //0x80060be0

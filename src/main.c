@@ -171,7 +171,7 @@ char* GetBreathName(Breaths breath) {
 
 XRGBA* GetHealthColor(int health) {
     //Sparx' colors are different depending on if the upgrade has been bought
-    bool gottenUpgrade = (gAbilityFlags & 4) != 0;
+    bool gottenUpgrade = (gPlayerState.AbilityFlags & 4) != 0;
 
     //Each unit of health is 0x20
     int index = health/0x20;
@@ -513,8 +513,8 @@ void PlayerHandlerUpdate(int* self) {
 
             if (NumberOfPlayers() > 1) {
                 //Set the global breath to this player's breath
-                gCurrentBreath = PLAYER_BREATHS[i];
-                gHealth = PLAYER_HEALTH[i];
+                gPlayerState.CurrentBreath = PLAYER_BREATHS[i];
+                gPlayerState.Health = PLAYER_HEALTH[i];
             }
         }
     }
@@ -533,11 +533,11 @@ void SparxUpdate(int* self) {
     //If using multiplayer health mode, set to lowest of all player's health.
     //This is partially to make him chase butterflies even if one player isn't at full health
     if (NumberOfPlayers() > 1) {
-        gHealth = PLAYER_HEALTH[0];
+        gPlayerState.Health = PLAYER_HEALTH[0];
         for (int i = 1; i < 4; i++) {
             if (players[i] != -1) {
-                if (gHealth > PLAYER_HEALTH[i]) {
-                    gHealth = PLAYER_HEALTH[i];
+                if (gPlayerState.Health > PLAYER_HEALTH[i]) {
+                    gPlayerState.Health = PLAYER_HEALTH[i];
                 }
             }
         }
@@ -702,7 +702,7 @@ void MainUpdate() {
     }
 
     if (NumberOfPlayers() > 1) {
-        gCurrentBreath = PLAYER_BREATHS[0];
+        gPlayerState.CurrentBreath = PLAYER_BREATHS[0];
     }
 
     if (isButtonDown(Button_Dpad_Down, 0)) {
@@ -875,8 +875,8 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
         int portNr = 0;
         for (int i = 0; i < 4; i++) {
             if (players[i] == ID) {
-                PLAYER_BREATHS[i] = gCurrentBreath;
-                PLAYER_HEALTH[i] = gHealth;
+                PLAYER_BREATHS[i] = gPlayerState.CurrentBreath;
+                PLAYER_HEALTH[i] = gPlayerState.Health;
                 break;
             }
         }
@@ -941,11 +941,11 @@ void Sparx_SetPlayerHealth_Hook(int* self, int health) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
                 //Get the player's stored health
-                gHealth = PLAYER_HEALTH[i];
+                gPlayerState.Health = PLAYER_HEALTH[i];
                 //Add 1 unit of health
-                PlayerState_SetHealth(self, gHealth + 0x20);
+                PlayerState_SetHealth(self, gPlayerState.Health + 0x20);
                 //Save the resulting health value to the player
-                PLAYER_HEALTH[i] = gHealth;
+                PLAYER_HEALTH[i] = gPlayerState.Health;
             }
         }
     } else {
@@ -955,7 +955,7 @@ void Sparx_SetPlayerHealth_Hook(int* self, int health) {
 
 //After a special butterfly is collected (set all health to full)
 void Butterfly_Special_SetHealth_Hook(int* self, int health) {
-    gHealth = 0xA0;
+    gPlayerState.Health = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
@@ -964,7 +964,7 @@ void Butterfly_Special_SetHealth_Hook(int* self, int health) {
 
 //Runs after the "urghhhImDead" function for Spyro, Blink and Hunter.
 void urghhhImDead() {
-    gHealth = 0xA0;
+    gPlayerState.Health = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
