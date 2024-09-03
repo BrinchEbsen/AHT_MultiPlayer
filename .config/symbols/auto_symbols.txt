@@ -1,6 +1,7 @@
 /* Symbols declared in C code with "in_game" */
 gpPlayer = 0x804CB35C;
 gpPlayerItem = 0x804CB360;
+gpSparx = 0x804cb364;
 gpGameWnd = 0x804cb3cc;
 gpPanelWnd = 0x804cb3d0;
 gGameText = 0x80455c1c;
@@ -69,10 +70,13 @@ GUI_PanelItem_v_StateRunning = 0x8021eb3c;
 SE_GameLoop_State = 0x8046F344;
 Camera_Follow_Elevation_Default = 0x803bf66c;
 ItemHandler_SEKill = 0x80242210;
+XSEItemEnv_RemoveXSEItemHandler = 0x80240a8c;
+SE_Trigger_DoKill = 0x8023a9d0;
 gPlayerLoader = 0x804cc464;
 PlayerLoader_IsLoaded = 0x80060be0;
 PlayerLoader_PreLoad = 0x80060ba4;
 PlayerLoader_CancelPreLoad = 0x80060cac;
+PlayerLoader_DeLoad = 0x80060c74;
 gSEFileManager = 0x804606f8;
 GetPlayersFileList = 0x80060b18;
 FileManager_IsGeoLoaded = 0x8022db20;

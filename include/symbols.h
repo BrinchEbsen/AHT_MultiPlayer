@@ -18,6 +18,8 @@ the global struct name prefixed with an underscore.
 in_game int* gpPlayer; //0x804CB35C
 //Player item
 in_game int* gpPlayerItem; //0x804CB360
+//Sparx handler
+in_game int* gpSparx; //0x804cb364
 //Game (World) window
 in_game int* gpGameWnd; //0x804cb3cc
 //Panel (HUD) window
@@ -156,11 +158,16 @@ in_game float Camera_Follow_Elevation_Default; //0x803bf66c
 
 in_game bool ItemHandler_SEKill(int* self); //0x80242210
 
+in_game void XSEItemEnv_RemoveXSEItemHandler(int* _theItemEnv, int* pHandler); //0x80240a8c
+
+in_game void SE_Trigger_DoKill(int* self); //0x8023a9d0
+
 in_game int gPlayerLoader; //0x804cc464
 
 in_game bool PlayerLoader_IsLoaded(int* _gPlayerLoader, Players Player); //0x80060be0
 in_game void PlayerLoader_PreLoad(int* _gPlayerLoader, Players Player); //0x80060ba4
 in_game void PlayerLoader_CancelPreLoad(int* _gPlayerLoader); //0x80060cac
+in_game void PlayerLoader_DeLoad(int* _gPlayerLoader, Players Player); //0x80060c74
 
 in_game int gSEFileManager; //0x804606f8
 

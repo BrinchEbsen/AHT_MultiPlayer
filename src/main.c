@@ -62,7 +62,31 @@ float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
 bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
 float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
 
-#define CHARACTER_VTABLES_AMOUNT 8
+int SPYRO_VTABLE = 0x8040B908;
+int HUNTER_VTABLE = 0x80407338;
+int BLINK_VTABLE = 0x80406488;
+int SGTBYRD_VTABLE = 0x8040aea8;
+int SPARX_PLAYER_VTABLE = 0x80405e38;
+int BALLGADGET_VTABLE = 0x80404ec0;
+int EMBER_VTABLE = 0x804051d8;
+int FLAME_VTABLE = 0x80405428;
+
+int SPARX_VTABLE = 0x8040f8b0;
+int CAMERA_FOLLOW_VTABLE = 0x804161b0;
+int BLINKYBULLET_VTABLE = 0x80408988;
+int LOCKEDCHEST_VTABLE = 0x80429b18;
+
+#define CHARACTER_AMOUNT 8
+Players CHARACTERS[] = {
+    Player_Spyro,
+    Player_Hunter,
+    Player_Blinky,
+    Player_SgtByrd,
+    Player_Sparx,
+    Player_BallGadget,
+    Player_Ember,
+    Player_Flame
+};
 int CHARACTER_VTABLES[] = {
     0x8040B908, //Spyro
     0x80407338, //Hunter
@@ -74,26 +98,31 @@ int CHARACTER_VTABLES[] = {
     0x80405428  //Flame
 };
 
-int SPYRO_VTABLE = 0x8040B908;
-int SPARX_VTABLE = 0x8040f8b0;
-int CAMERA_FOLLOW_VTABLE = 0x804161b0;
-int BLINKYBULLET_VTABLE = 0x80408988;
-int LOCKEDCHEST_VTABLE = 0x80429b18;
-
 bool initialized = false;
 bool showDebug = false;
 int showDebugTimer = 0;
 
-int playerJoinedNotifTimer = 0;
-int playerWhoJoined = 0;
+bool playerNotifShowing[] = {
+    false,
+    false,
+    false,
+    false
+};
+u16 playerNotifYOffets[] = {
+    250,
+    265,
+    280,
+    295
+};
 
-int notLoadedYetNotifTimer = 0;
+int playerJoinedNotifTimers[] = {0, 0, 0, 0};
+
+int notLoadedYetNotifTimers[] = {0, 0, 0, 0};
 
 int restartGameTimer = 0;
 int restartGameTimerMax = 80;
 
-int breathSelectNotifTimer = 0;
-int playerWhoChangedBreath = 0;
+int breathSelectNotifTimers[] = {0, 0, 0, 0};
 Breaths lastBreathChangedTo = Breath_Fire;
 
 int* cameraTargetItem = NULL;
@@ -103,9 +132,17 @@ int playerJoinCooldownTimer = 0;
 //Contains the itemhandler ID's for each of the four players. -1 if not in use.
 int players[4] = {-1, -1, -1, -1};
 int lastPlayerUpdated = 0;
+
 //Timers for how long each player has held down the button to restore control/visibility
 int player_restore_timers[4] = {0, 0, 0, 0};
-int player_restore_timer_max = 30;
+int player_restore_timer_max = 60;
+
+int playerRestoreNotifTimers[] = {0, 0, 0, 0};
+
+int player_leave_timers[4] = {0, 0, 0, 0};
+int player_leave_timer_max = 90;
+
+int playerLeaveNotifTimers[] = {0, 0, 0, 0};
 
 //Check for the Z button being pressed twice within 20 frames at the given pad number
 bool checkZDoublePress(int padNr) {
@@ -234,6 +271,32 @@ int NumberOfPlayers() {
     return count;
 }
 
+//Get the number of player items currently referenced, who can have Sparx following around
+int NumberOfPlayersWhoCanHaveSparx() {
+    int count = 0;
+
+    for (int i = 0; i < 4; i++) {
+        if (players[i] != -1) {
+            int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
+            if (handler == NULL) { continue; }
+
+            int vtable = *(handler + 0x4/4);
+
+            //These characters cannot have sparx (bizarrely Sgt. Byrd isn't included)
+            if (
+                (vtable == BALLGADGET_VTABLE) ||
+                (vtable == SPARX_PLAYER_VTABLE)
+            ) {
+                continue;
+            }
+
+            count++;
+        }
+    }
+
+    return count;
+}
+
 int GetPortNrFromPlayerHandler(int* handler) {
     if (handler == NULL) { return 0; }
 
@@ -262,7 +325,7 @@ bool SetPlayerRefToPort(int portNr) {
 bool HandlerIsPlayer(int* handler) {
     int vtable = *(handler + 0x4/4);
 
-    for (int j = 0; j < CHARACTER_VTABLES_AMOUNT; j++) {
+    for (int j = 0; j < CHARACTER_AMOUNT; j++) {
         if (CHARACTER_VTABLES[j] == vtable) {
             return true;
         }
@@ -381,10 +444,10 @@ void addNewPlayer(int portNr) {
     PlayerLoader_PreLoad(&gPlayerLoader, *setup_Player);
     //Check if it's loaded, set a notification and abort if not.
     if (!PlayerLoader_IsLoaded(&gPlayerLoader, *setup_Player)) {
-        notLoadedYetNotifTimer = 60;
+        notLoadedYetNotifTimers[portNr] = 60;
         return;
     } else {
-        notLoadedYetNotifTimer = 0;
+        notLoadedYetNotifTimers[portNr] = 0;
     }
 
     //If the player is set to be Spyro, make it Ember for port 2 and Flame for port 3
@@ -405,8 +468,8 @@ void addNewPlayer(int portNr) {
     players[portNr] = ID;
 
     //Finally set some notification values
-    playerJoinedNotifTimer = 120;
-    playerWhoJoined = portNr;
+    playerJoinedNotifTimers[portNr] = 60;
+    playerLeaveNotifTimers[portNr] = 0;
 }
 
 //Remove player (2, 3 or 4) and set player 1 as the global referent
@@ -433,6 +496,10 @@ void removePlayer(int portNr) {
 
     gpPlayer = handler;
     gpPlayerItem = (int*) *handler;
+
+    //Finally set some notification values
+    playerJoinedNotifTimers[portNr] = 0;
+    playerLeaveNotifTimers[portNr] = 60;
 }
 
 //Set a player to be visible and controllable
@@ -920,7 +987,15 @@ void MainUpdate() {
                 addNewPlayer(i);
             }
         } else {
-            
+            if ((i != 0) && isButtonDown(Button_Dpad_Right, i)) {
+                player_leave_timers[i]++;
+                if (player_leave_timers[i] >= player_leave_timer_max) {
+                    player_leave_timers[i] = 0;
+                    removePlayer(i);
+                }
+            } else {
+                player_leave_timers[i] = 0;
+            }
 
             if (checkZDoublePress(i)) {
                 teleportPlayersToPlayer(i);
@@ -944,29 +1019,97 @@ void MainUpdate() {
 //draw_hook.s | Runs every frame during the HUD draw loop
 //Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
-    //Notification for a character not having loaded yet
-    if (notLoadedYetNotifTimer > 0) {
-        textPrint("Not loaded yet, please wait...", 0, 20, 100, TopLeft, &COLOR_LIGHT_RED, 1.0f);
-        notLoadedYetNotifTimer--;
+    for (int i = 0; i < 4; i++) {
+        bool alreadyShowing = false;
+        
+        //JOIN NOTIFICATION
+        if (playerJoinedNotifTimers[i] > 0) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Joined!", i+1);
+                alreadyShowing = true;
+            }
+            playerJoinedNotifTimers[i]--;
+        }
+
+        //LEAVING NOTIFICATION
+        if (player_leave_timers[i] > 20) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Leaving...", i+1);
+
+                EXRect r = {
+                    .x = 140,
+                    .y = playerNotifYOffets[i] + 8,
+                    .w = 50,
+                    .h = 10
+                };
+
+                Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
+
+                //Subtract 20 to make the timer start from the left
+                r.w = (float)r.w * ((float)(player_leave_timers[i]-20) / (float)(player_leave_timer_max-20));
+
+                Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
+
+                alreadyShowing = true;
+            }
+        }
+
+        //LEAVE NOTIFICATION
+        if (playerLeaveNotifTimers[i] > 0) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Left", i+1);
+                alreadyShowing = true;
+            }
+            
+            playerLeaveNotifTimers[i]--;
+        }
+
+        //MAKING UNSTUCK NOTIFICATION
+        if (player_restore_timers[i] > 20) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Restoring...", i+1);
+
+                EXRect r = {
+                    .x = 140,
+                    .y = playerNotifYOffets[i] + 8,
+                    .w = 50,
+                    .h = 10
+                };
+
+                Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
+
+                //Subtract 20 to make the timer start from the left
+                r.w = (float)r.w * ((float)(player_restore_timers[i]-20) / (float)(player_restore_timer_max-20));
+
+                Util_DrawRect(gpPanelWnd, &r, &COLOR_GREEN);
+
+                alreadyShowing = true;
+            }
+        }
+
+        //NOT LOADED YET NOTIFICATION
+        if (notLoadedYetNotifTimers[i] > 0) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "Player %d: Not loaded yet, please wait...", i+1);
+                alreadyShowing = true;
+            }
+            
+            notLoadedYetNotifTimers[i]--;
+        }
+
+        //CHANGED BREATH NOTIFICATION
+        if (breathSelectNotifTimers[i] > 0) {
+            if (!alreadyShowing) {
+                char* breathName = GetBreathName(PLAYER_BREATHS[i]);
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "Player %d: Selected %s", i+1, breathName);
+                alreadyShowing = true;
+            }
+            
+            breathSelectNotifTimers[i]--;
+        }
     }
 
-    //Notification for a player joining
-    if (playerJoinedNotifTimer > 0) {
-        textPrintF(0, 250, Centre, PLAYER_COLORS[playerWhoJoined], 1.3f, "Player %d has joined", playerWhoJoined+1);
-        playerJoinedNotifTimer--;
-    }
-
-    //Notification for a player selecting a breath
-    if (breathSelectNotifTimer > 0) {
-        char* breathName = GetBreathName(PLAYER_BREATHS[playerWhoChangedBreath]);
-
-        textPrintF(0, 0, BottomLeft, PLAYER_COLORS[playerWhoChangedBreath], 1.0f, "Player %d selected %s",
-            playerWhoChangedBreath+1, breathName
-        );
-        breathSelectNotifTimer--;
-    }
-
-    if (restartGameTimer > 0) {
+    if (restartGameTimer > 20) {
         textPrint("Restarting...", 0, 20, 300, TopLeft, &COLOR_LIGHT_RED, 1.2);
 
         EXRect r = {
@@ -978,7 +1121,7 @@ void DrawUpdate() {
 
         Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
 
-        r.w = (float)r.w * ((float)restartGameTimer / (float)restartGameTimerMax);
+        r.w = (float)r.w * ((float)(restartGameTimer-20) / (float)(restartGameTimerMax-20));
 
         Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
     }
@@ -1081,8 +1224,7 @@ bool TestBreathChangeHook(int* self) {
 
         if (player != -1) {
             //Set notification settings
-            playerWhoChangedBreath = player;
-            breathSelectNotifTimer = 60;
+            breathSelectNotifTimers[player] = 60;
             lastBreathChangedTo = gPlayerState.CurrentBreath;
         }
     }
@@ -1187,4 +1329,69 @@ int GUI_PanelItem_v_StateRunning_Hook(int* self) {
     gPlayerState.SuperchargeTimer = tempSupTimer;
 
     return res;
+}
+
+//Replaces the Delete method for the XSEItemHandler_Player class
+int ReImpl_XSEItemHandler_Player_Delete(int* self) {
+    Players player = *(self + (0x578/4));
+
+    //If there's more than 1 player, we wanna check if any of the same type is present,
+    //so we don't end up unloading files that are used.
+    if (NumberOfPlayers() > 1) {
+        int portNr = GetPortNrFromPlayerHandler(self);
+
+        for (int i = 0; i < 4; i++) {
+            if (i == portNr) { continue; } //ignore self
+
+            //Get the other player's handler
+            int* oHandler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
+            if (oHandler == NULL) { continue; }
+
+            //Get other player's player type
+            Players oPlayer = *(oHandler + (0x578/4));
+
+            //Now return from the call if we find any other player using the same files.
+
+            //Special case for Spyro, Flame and Ember since they use the same files
+            if (
+                (player == Player_Spyro) ||
+                (player == Player_Ember) ||
+                (player == Player_Flame)
+            ) {
+                if (
+                    (oPlayer == Player_Spyro) ||
+                    (oPlayer == Player_Ember) ||
+                    (oPlayer == Player_Flame)
+                ) {
+                    return 2;
+                }
+            }
+            
+            if (player == oPlayer) {
+                return 2;
+            }
+        }
+    }
+
+    PlayerLoader_DeLoad(&gPlayerLoader, player);
+    return 2;
+}
+
+//Replaces the DoKill method call on the XSEItemHandler class
+//when called from one of the players' Delete method when it's trying to delete Sparx
+void ReImpl_XSEItemHandler_DoKill(int* self) {
+    //We don't wanna unload Sparx if there's more than 1 player
+    if (NumberOfPlayersWhoCanHaveSparx() > 1) { return; }
+
+    //This is just the regular code for a single player
+    int* trigger = (int*) *(self + (0x10/4));
+
+    if (trigger == NULL) {
+        ItemHandler_SEKill(self);
+    } else {
+        SE_Trigger_DoKill(trigger);
+    }
+
+    //We're nop'ing the usual nullification of this, so it must be done here
+    gpSparx = NULL;
 }

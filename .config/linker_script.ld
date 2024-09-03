@@ -42,6 +42,15 @@ MEMORY
     hookINVPad : ORIGIN = 0x800e9b18, LENGTH = 0x100000
     patchHandleSuperCharge1 : ORIGIN = 0x800a1e4c, LENGTH = 0x100000
     patchHandleSuperCharge2 : ORIGIN = 0x800a1d6c, LENGTH = 0x100000
+    hookReImpl_PlayerDelete : ORIGIN = 0x80058278, LENGTH = 0x100000
+    hookSparxDoKill_Spy : ORIGIN = 0x80086988, LENGTH = 0x100000
+    hookSparxSetNull_Spy : ORIGIN = 0x80086990, LENGTH = 0x100000
+    hookSparxDoKill_Blk : ORIGIN = 0x8001ff28, LENGTH = 0x100000
+    hookSparxSetNull_Blk : ORIGIN = 0x8001ff30, LENGTH = 0x100000
+    hookSparxDoKill_Hun : ORIGIN = 0x80046dcc, LENGTH = 0x100000
+    hookSparxSetNull_Hun : ORIGIN = 0x80046dd4, LENGTH = 0x100000
+    hookSparxDoKill_Sgt : ORIGIN = 0x8007b590, LENGTH = 0x100000
+    hookSparxSetNull_Sgt : ORIGIN = 0x8007b598, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -406,6 +415,96 @@ SECTIONS
         patchHandleSuperCharge2.o(.data)
         patchHandleSuperCharge2.o(.bss)
     } > patchHandleSuperCharge2
+
+    /* Custom section for our hook code */
+    .hookReImpl_PlayerDelete : 
+    {
+        hookReImpl_PlayerDelete.o(.text)
+        hookReImpl_PlayerDelete.o(.rodata)
+        hookReImpl_PlayerDelete.o(.rodata*)
+        hookReImpl_PlayerDelete.o(.data)
+        hookReImpl_PlayerDelete.o(.bss)
+    } > hookReImpl_PlayerDelete
+
+    /* Custom section for our hook code */
+    .hookSparxDoKill_Spy : 
+    {
+        hookSparxDoKill_Spy.o(.text)
+        hookSparxDoKill_Spy.o(.rodata)
+        hookSparxDoKill_Spy.o(.rodata*)
+        hookSparxDoKill_Spy.o(.data)
+        hookSparxDoKill_Spy.o(.bss)
+    } > hookSparxDoKill_Spy
+
+    /* Custom section for our hook code */
+    .hookSparxSetNull_Spy : 
+    {
+        hookSparxSetNull_Spy.o(.text)
+        hookSparxSetNull_Spy.o(.rodata)
+        hookSparxSetNull_Spy.o(.rodata*)
+        hookSparxSetNull_Spy.o(.data)
+        hookSparxSetNull_Spy.o(.bss)
+    } > hookSparxSetNull_Spy
+
+    /* Custom section for our hook code */
+    .hookSparxDoKill_Blk : 
+    {
+        hookSparxDoKill_Blk.o(.text)
+        hookSparxDoKill_Blk.o(.rodata)
+        hookSparxDoKill_Blk.o(.rodata*)
+        hookSparxDoKill_Blk.o(.data)
+        hookSparxDoKill_Blk.o(.bss)
+    } > hookSparxDoKill_Blk
+
+    /* Custom section for our hook code */
+    .hookSparxSetNull_Blk : 
+    {
+        hookSparxSetNull_Blk.o(.text)
+        hookSparxSetNull_Blk.o(.rodata)
+        hookSparxSetNull_Blk.o(.rodata*)
+        hookSparxSetNull_Blk.o(.data)
+        hookSparxSetNull_Blk.o(.bss)
+    } > hookSparxSetNull_Blk
+
+    /* Custom section for our hook code */
+    .hookSparxDoKill_Hun : 
+    {
+        hookSparxDoKill_Hun.o(.text)
+        hookSparxDoKill_Hun.o(.rodata)
+        hookSparxDoKill_Hun.o(.rodata*)
+        hookSparxDoKill_Hun.o(.data)
+        hookSparxDoKill_Hun.o(.bss)
+    } > hookSparxDoKill_Hun
+
+    /* Custom section for our hook code */
+    .hookSparxSetNull_Hun : 
+    {
+        hookSparxSetNull_Hun.o(.text)
+        hookSparxSetNull_Hun.o(.rodata)
+        hookSparxSetNull_Hun.o(.rodata*)
+        hookSparxSetNull_Hun.o(.data)
+        hookSparxSetNull_Hun.o(.bss)
+    } > hookSparxSetNull_Hun
+
+    /* Custom section for our hook code */
+    .hookSparxDoKill_Sgt : 
+    {
+        hookSparxDoKill_Sgt.o(.text)
+        hookSparxDoKill_Sgt.o(.rodata)
+        hookSparxDoKill_Sgt.o(.rodata*)
+        hookSparxDoKill_Sgt.o(.data)
+        hookSparxDoKill_Sgt.o(.bss)
+    } > hookSparxDoKill_Sgt
+
+    /* Custom section for our hook code */
+    .hookSparxSetNull_Sgt : 
+    {
+        hookSparxSetNull_Sgt.o(.text)
+        hookSparxSetNull_Sgt.o(.rodata)
+        hookSparxSetNull_Sgt.o(.rodata*)
+        hookSparxSetNull_Sgt.o(.data)
+        hookSparxSetNull_Sgt.o(.bss)
+    } > hookSparxSetNull_Sgt
 
     .MainCodecave : 
     {
