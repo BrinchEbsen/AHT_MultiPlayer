@@ -338,6 +338,7 @@ bool SetPlayerRefToPort(int portNr) {
 
 //Check if the given handler's vtable matches that of a player
 bool HandlerIsPlayer(int* handler) {
+    if (handler == NULL) { return false; }
     int vtable = *(handler + 0x4/4);
 
     for (int j = 0; j < CHARACTER_AMOUNT; j++) {
@@ -1258,6 +1259,31 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     //Return control to player 1 after updating
     g_PadNum = 0;
     return res;
+}
+
+//Replaces the call to EXItemEnv::UpdateItems_Physics
+//replaces the original code but adds swapping around player references.
+void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
+    EXDList* list = (EXDList*) *(self + (0x80/4));
+
+    EXDListItem* i = list->head;
+
+    while (i != NULL) {
+        int* vtable = (int*) *(((int*)i) + (0x18/4));
+
+        int* handler = *((int*)i) + (0x14C/4);
+
+        bool isPlayer = HandlerIsPlayer(handler);
+        if (isPlayer) {
+            gpPlayer = handler;
+            gpPlayerItem = i;
+        }
+
+        EXItem_DoItemPhysics doPhysFunc = (EXItem_DoItemPhysics) *(vtable + (0x28/4));
+        doPhysFunc(i);
+
+        i = i->next;
+    }
 }
 
 //Runs before the game checks for the player changing breath

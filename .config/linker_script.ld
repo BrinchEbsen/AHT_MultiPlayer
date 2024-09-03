@@ -51,6 +51,7 @@ MEMORY
     hookSparxSetNull_Hun : ORIGIN = 0x80046dd4, LENGTH = 0x100000
     hookSparxDoKill_Sgt : ORIGIN = 0x8007b590, LENGTH = 0x100000
     hookSparxSetNull_Sgt : ORIGIN = 0x8007b598, LENGTH = 0x100000
+    hookUpdateItemPhysics : ORIGIN = 0x8023f7f4, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -505,6 +506,16 @@ SECTIONS
         hookSparxSetNull_Sgt.o(.data)
         hookSparxSetNull_Sgt.o(.bss)
     } > hookSparxSetNull_Sgt
+
+    /* Custom section for our hook code */
+    .hookUpdateItemPhysics : 
+    {
+        hookUpdateItemPhysics.o(.text)
+        hookUpdateItemPhysics.o(.rodata)
+        hookUpdateItemPhysics.o(.rodata*)
+        hookUpdateItemPhysics.o(.data)
+        hookUpdateItemPhysics.o(.bss)
+    } > hookUpdateItemPhysics
 
     .MainCodecave : 
     {
