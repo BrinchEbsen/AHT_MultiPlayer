@@ -7,6 +7,11 @@
 #include <symbols.h>
 #include <screenmath.h>
 
+struct RayVecs {
+    EXVector vecs[3];
+};
+typedef struct RayVecs RayVecs;
+
 int GUI_PanelItem_v_StateRunning_Hook(int* self);
 GUI_PanelItem_v_StateRunning_func GUI_PanelItem_v_StateRunning_hookFunc = GUI_PanelItem_v_StateRunning_Hook;
 
@@ -44,6 +49,8 @@ XRGBA* HEALTH_COLORS_UPGRADE[] = {
     /*0x80*/ &COLOR_BLUE,
     /*0xA0*/ &COLOR_P4
 };
+
+RayVecs PLAYER_RAYVECS[4];
 
 char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
 
@@ -201,6 +208,14 @@ float EXVector_Dist(EXVector* v1, EXVector* v2) {
     );
 }
 
+//Copy EXVector src into dest
+void EXVector_Copy(EXVector* dest, EXVector* src) {
+    dest->x = src->x;
+    dest->y = src->y;
+    dest->z = src->z;
+    dest->w = src->w;
+}
+
 char* GetBreathName(Breaths breath) {
     switch (breath) {
         case Breath_Fire:
@@ -208,7 +223,7 @@ char* GetBreathName(Breaths breath) {
         case Breath_Electric:
             return "Electric";
         case Breath_Water:
-            return "Water";
+            return "Water"; 
         case Breath_Ice:
             return "Ice";
     }
@@ -630,6 +645,10 @@ void PlayerHandlerPreUpdate(int* self) {
                     gPlayerState.AbilityFlags &= ~Abi_SuperCharge;
                 }
                 gPlayerState.SuperchargeTimer = PLAYER_SUPERCHARGE_TIMER[i];
+
+                EXVector_Copy(&ray0, &PLAYER_RAYVECS[i].vecs[0]);
+                EXVector_Copy(&ray1, &PLAYER_RAYVECS[i].vecs[1]);
+                EXVector_Copy(&ray2, &PLAYER_RAYVECS[i].vecs[2]);
             }
         }
     }
@@ -660,6 +679,11 @@ void PlayerHandlerPostUpdate(int* self) {
             } else {
                 PLAYER_SUPERCHARGE[i] = false;
             }
+
+            EXVector_Copy(&PLAYER_RAYVECS[i].vecs[0], &ray0);
+            EXVector_Copy(&PLAYER_RAYVECS[i].vecs[1], &ray1);
+            EXVector_Copy(&PLAYER_RAYVECS[i].vecs[2], &ray2);
+
             break;
         }
     }
@@ -860,14 +884,46 @@ void DrawPlayerMarker(int portNr) {
     EXVector2 screenPos = {0.0};
     WorldToDisp(&screenPos, &pos);
 
-    //Position to display name
-    EXVector2 textPos = {
-        .x = screenPos.x - 10.0,
-        .y = screenPos.y - 30.0
-    };
+    static float xBuffer = 20.0;
+    static float yBuffer = 40.0;
 
     //Render if in a valid screen position
-    if (isInFrontOfCam(&pos) && isWithinFrame(&screenPos)) {
+    if (/*isInFrontOfCam(&pos) && isWithinFrame(&screenPos)*/true) {
+        //Clamp vertical
+        if (screenPos.y < yBuffer) {
+            screenPos.y = yBuffer;
+        }
+        if (screenPos.y > FRAME_SIZE_Y) {
+            screenPos.y = FRAME_SIZE_Y;
+        }
+        //Clamp horizontal
+        if (screenPos.x < xBuffer) {
+            screenPos.x = xBuffer;
+        }
+        if (screenPos.x > FRAME_SIZE_X-xBuffer) {
+            screenPos.x = FRAME_SIZE_X-xBuffer;
+        }
+
+        if (!isInFrontOfCam(&pos)) {
+            if (screenPos.x < (FRAME_SIZE_X/2)) {
+                screenPos.x = xBuffer;
+            } else {
+                screenPos.x = FRAME_SIZE_X-xBuffer;
+            }
+
+            //Invert X and Y position
+            screenPos.y = FRAME_SIZE_Y - screenPos.y + (yBuffer);
+            screenPos.x = FRAME_SIZE_X - screenPos.x;
+        }
+
+        //textPrintF(100, playerNotifYOffets[portNr], TopLeft, PLAYER_COLORS[portNr], 1.0f, "%.2f %.2f", screenPos.x, screenPos.y);
+
+        //Position to display name
+        EXVector2 textPos = {
+            .x = screenPos.x - 10.0,
+            .y = screenPos.y - 30.0
+        };
+
         //Name
         textPrint(
             PLAYER_NAMES[portNr], 0,
@@ -1019,6 +1075,15 @@ void MainUpdate() {
 //draw_hook.s | Runs every frame during the HUD draw loop
 //Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
+    //If there are 2 or more players, display names above the players.
+    if (NumberOfPlayers() > 1) {
+        for (int i = 0; i < 4; i++) {
+            if (players[i] != -1) {
+                DrawPlayerMarker(i);
+            }
+        }
+    }
+
     for (int i = 0; i < 4; i++) {
         bool alreadyShowing = false;
         
@@ -1090,7 +1155,7 @@ void DrawUpdate() {
         //NOT LOADED YET NOTIFICATION
         if (notLoadedYetNotifTimers[i] > 0) {
             if (!alreadyShowing) {
-                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "Player %d: Not loaded yet, please wait...", i+1);
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Not loaded yet, please wait...", i+1);
                 alreadyShowing = true;
             }
             
@@ -1101,7 +1166,7 @@ void DrawUpdate() {
         if (breathSelectNotifTimers[i] > 0) {
             if (!alreadyShowing) {
                 char* breathName = GetBreathName(PLAYER_BREATHS[i]);
-                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "Player %d: Selected %s", i+1, breathName);
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Selected %s", i+1, breathName);
                 alreadyShowing = true;
             }
             
@@ -1110,11 +1175,11 @@ void DrawUpdate() {
     }
 
     if (restartGameTimer > 20) {
-        textPrint("Restarting...", 0, 20, 300, TopLeft, &COLOR_LIGHT_RED, 1.2);
+        textPrint("Restarting...", 0, 10, 330, TopLeft, &COLOR_LIGHT_RED, 1.2);
 
         EXRect r = {
-            .x = 20,
-            .y = 330,
+            .x = 10,
+            .y = 360,
             .w = 120,
             .h = 20
         };
@@ -1124,15 +1189,6 @@ void DrawUpdate() {
         r.w = (float)r.w * ((float)(restartGameTimer-20) / (float)(restartGameTimerMax-20));
 
         Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
-    }
-
-    //If there are 2 or more players, display names above the players.
-    if (NumberOfPlayers() > 1) {
-        for (int i = 0; i < 4; i++) {
-            if (players[i] != -1) {
-                DrawPlayerMarker(i);
-            }
-        }
     }
 
     //DEBUG BELOW:

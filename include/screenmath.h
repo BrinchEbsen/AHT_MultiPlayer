@@ -2,6 +2,9 @@
 #define SCREENMATH_H
 #include <common.h>
 
+extern const u16 FRAME_SIZE_X;
+extern const u16 FRAME_SIZE_Y;
+
 //Test whether a 3D vector exists in front of the game camera.
 bool isInFrontOfCam(EXVector* vct);
 //Test whether a 2D vector exists within the rendered frame.
