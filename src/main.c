@@ -429,14 +429,17 @@ void addNewPlayer(int portNr) {
     int* map = GetSpyroMap(0);
     if (map == NULL) { return; }
 
-    //Find the handler with the ID in port number 1 (this is where we spawn the new player next to)
-    int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[0], 0);
-    if (handler == NULL) { return; }
+    //Find the first available player that already exists (this is where we spawn the new player next to)
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+    if (count == 0) { return; } //there are no other players, the game should've restarted long ago
+
+    int* handler = list[0];
 
     //Get item
     int* item = (int*)(*handler);
 
-    //New player is spawned above and to the side of player 1
+    //New player is spawned above and to the side of this player
     EXVector* pos = (EXVector*) (item + (0xD0/4));
     EXVector v = {
         pos->x + 2.0,
@@ -488,11 +491,9 @@ void addNewPlayer(int portNr) {
     playerLeaveNotifTimers[portNr] = 0;
 }
 
-//Remove player (2, 3 or 4) and set player 1 as the global referent
-//THIS CRASHES THE GAME!!! Character file is unloaded, leading to invalid file ref for the other players.
 void removePlayer(int portNr) {
-    //Only perform on players 2, 3 and 4
-    if ((portNr < 1) || (portNr > 3)) { return; }
+    //Only perform on players 1, 2, 3 and 4
+    if ((portNr < 0) || (portNr > 3)) { return; }
 
     if (players[portNr] == -1) { return; }
     
@@ -506,12 +507,15 @@ void removePlayer(int portNr) {
 
     //Get the player 1 handler
     if (players[0] == -1) { return; }
-    
-    handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[0], 0);
-    if (handler == NULL) { return; }
 
-    gpPlayer = handler;
-    gpPlayerItem = (int*) *handler;
+    //Set the global references to the first available player
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+    if (count != 0) {
+        int* newHandler = list[0];
+        gpPlayer = newHandler;
+        gpPlayerItem = (int*) *newHandler;
+    }
 
     //Finally set some notification values
     playerJoinedNotifTimers[portNr] = 0;
@@ -696,11 +700,13 @@ void PlayerHandlerPostUpdate(int* self) {
 void SparxPreUpdate(int* self) {
     if (players[0] == -1) { return; }
 
-    int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[0], 0);
-    if (handler == NULL) { return; }
-
-    gpPlayer = handler;
-    gpPlayerItem = (int*) *handler;
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+    if (count != 0) {
+        int* playerHandler = list[0];
+        gpPlayer = playerHandler;
+        gpPlayerItem = (int*) *playerHandler;
+    }
 
     //If using multiplayer health mode, set to lowest of all player's health.
     //This is partially to make him chase butterflies even if one player isn't at full health
@@ -1078,8 +1084,8 @@ void MainUpdate() {
 //draw_hook.s | Runs every frame during the HUD draw loop
 //Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
-    //If there are 2 or more players, display names above the players.
-    if (NumberOfPlayers() > 1) {
+    //If player 1 isn't there or there's more than one player
+    if ((players[0] == -1) || (NumberOfPlayers() > 1)) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
                 DrawPlayerMarker(i);
@@ -1089,15 +1095,6 @@ void DrawUpdate() {
 
     for (int i = 0; i < 4; i++) {
         bool alreadyShowing = false;
-        
-        //JOIN NOTIFICATION
-        if (playerJoinedNotifTimers[i] > 0) {
-            if (!alreadyShowing) {
-                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Joined!", i+1);
-                alreadyShowing = true;
-            }
-            playerJoinedNotifTimers[i]--;
-        }
 
         //LEAVING NOTIFICATION
         if (player_leave_timers[i] > 20) {
@@ -1175,6 +1172,15 @@ void DrawUpdate() {
             
             breathSelectNotifTimers[i]--;
         }
+        
+        //JOIN NOTIFICATION
+        if (playerJoinedNotifTimers[i] > 0) {
+            if (!alreadyShowing) {
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Joined!", i+1);
+                alreadyShowing = true;
+            }
+            playerJoinedNotifTimers[i]--;
+        }
     }
 
     if (restartGameTimer > 20) {
@@ -1210,6 +1216,8 @@ void DrawUpdate() {
 
         drawSquareAtVec(pos, 4, &COLOR_RED);
     }
+
+    textSmpPrintF(20, 195, "items: %d", ItemEnv_ItemCount);
 
     return;
 }
@@ -1351,6 +1359,109 @@ void urghhhImDead() {
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
     PLAYER_HEALTH[3] = 0xA0;
+}
+
+bool handlerIsOnlyPlayerLeft(int* handler) {
+    int ID = *(handler + (0x8/4));
+
+    for (int i = 0; i < 4; i++) {
+        if (players[i] == ID) { continue; } //ignore self
+
+        if (players[i] != -1) { return false; }
+    }
+
+    return true;
+}
+
+//Returns whether or not a map inherets from or is an instance of SEMap_MiniGame
+bool MapIsMinigame(int* map) {
+    if (map == NULL) { return false; }
+    int* vtable = (int*) *(map + (0x74/4));
+    GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
+
+    for (EXRuntimeClass* class = getRTC(map); class != NULL; class = class->pBaseClass) {
+        if (class == 0x803cc500) { //Compare with SEMap_MiniGame::classSEMap_MiniGame
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//Replaces function at 0x800a31b0 and 0x80047f4c (both Spyro and Hunter die the same way)
+void ReImpl_SpyroHunter_urghhhImDead(int* self) {
+    if (handlerIsOnlyPlayerLeft(self)) {
+        PlayerState_SetHealth(&gPlayerState, 0xA0);
+        PlayerState_RestartGame(&gPlayerState);
+    } else {
+        int portNr = GetPortNrFromPlayerHandler(self);
+
+        gPlayerState.Health = 0xA0;
+        PLAYER_HEALTH[portNr] = 0xA0;
+
+        removePlayer(portNr);
+    }
+}
+
+//Replaces function at 0x80020ebc
+void ReImpl_Blink_urghhhImDead(int* self) {
+    if (handlerIsOnlyPlayerLeft(self)) {
+        int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
+
+        if (MapIsMinigame(map)) {
+            int* vtable = (int*) *(map + (0x74/4));
+            SE_Map_SetMiniGameDie_func setDieFunc = (SE_Map_SetMiniGameDie_func) *(vtable + (0xf8/4));
+            setDieFunc(map);
+
+            //Set some flags in the animator
+            int* anim = (int*) *(self + (0x144/4));
+            ushort* itemFlags = (ushort*) (anim + (0xc/4));
+            *itemFlags &= ~((ushort) 1);
+
+            //Set some flags in the player handler
+            int* playerStateFlags = self + (0x580/4);
+            *playerStateFlags |= 2; //ps_dead
+        } else {
+            //If it's not a minigame level, just do the usual stuff
+            PlayerState_SetHealth(&gPlayerState, 0xA0);
+            PlayerState_RestartGame(&gPlayerState);
+        }
+    } else {
+        int portNr = GetPortNrFromPlayerHandler(self);
+
+        gPlayerState.Health = 0xA0;
+        PLAYER_HEALTH[portNr] = 0xA0;
+
+        removePlayer(portNr);
+    }
+}
+
+//Replaces function at 0x8007c440
+void ReImpl_SgtByrd_urghhhImDead(int* self) {
+    if (handlerIsOnlyPlayerLeft(self)) {
+        int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
+
+        if (MapIsMinigame(map)) {
+            int* vtable = (int*) *(map + (0x74/4));
+            SE_Map_SetMiniGameDie_func setDieFunc = (SE_Map_SetMiniGameDie_func) *(vtable + (0xf8/4));
+            setDieFunc(map);
+
+            //Set some flags in the player handler
+            int* playerStateFlags = self + (0x580/4);
+            *playerStateFlags |= 2; //ps_dead
+        } else {
+            //If it's not a minigame level, just do the usual stuff
+            PlayerState_SetHealth(&gPlayerState, 0xA0);
+            PlayerState_RestartGame(&gPlayerState);
+        }
+    } else {
+        int portNr = GetPortNrFromPlayerHandler(self);
+
+        gPlayerState.Health = 0xA0;
+        PLAYER_HEALTH[portNr] = 0xA0;
+
+        removePlayer(portNr);
+    }
 }
 
 void GadgetPad_SuperCharge_Hook() {

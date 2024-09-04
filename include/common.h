@@ -102,6 +102,15 @@ struct EXCommonCamera
 };
 typedef struct EXCommonCamera EXCommonCamera;
 
+struct EXRuntimeClass
+{
+    struct EXRuntimeClass* pBaseClass;
+    char* pClassName;
+    int ObjectSize;
+    void* pCreateObject;
+};
+typedef struct EXRuntimeClass EXRuntimeClass;
+
 //Enums
 
 enum TextAlign

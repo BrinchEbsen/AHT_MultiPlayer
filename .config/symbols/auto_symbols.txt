@@ -84,6 +84,7 @@ Player_Delete = 0x80058278;
 Spyro_TestBreathChange = 0x8008ae04;
 PlayerState_SetHealth = 0x800689c0;
 PlayerState_RestartGame = 0x800687ec;
+PlayerSetupInfo_GetMap = 0x80068d8c;
 ray0 = 0x80449ED0;
 ray1 = 0x80449EE0;
 ray2 = 0x80449EF0;

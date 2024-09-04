@@ -156,6 +156,12 @@ typedef int (*ItemHandler_Delete)(int*);
 //The DoItemPhysics method on the EXItem class (and its derivitives).
 typedef void (*EXItem_DoItemPhysics)(int*);
 
+//Generic GetRuntimeClass function
+typedef EXRuntimeClass* (*GetRuntimeClass_func)(int*);
+
+//The SetMiniGameDie method on the SEMap_Minigame class
+typedef void (*SE_Map_SetMiniGameDie_func)(int*);
+
 in_game int SE_GameLoop_State; //0x8046F344
 in_game float Camera_Follow_Elevation_Default; //0x803bf66c
 
@@ -183,6 +189,8 @@ in_game bool Spyro_TestBreathChange(int* self); //0x8008ae04
 
 in_game void PlayerState_SetHealth(int* self, int health); //0x800689c0
 in_game void PlayerState_RestartGame(int* self); //0x800687ec
+
+in_game int* PlayerSetupInfo_GetMap(PlayerSetupInfo* self); //0x80068d8c
 
 in_game EXVector ray0; //0x80449ED0
 in_game EXVector ray1; //0x80449EE0

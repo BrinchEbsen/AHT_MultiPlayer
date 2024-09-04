@@ -52,6 +52,10 @@ MEMORY
     hookSparxDoKill_Sgt : ORIGIN = 0x8007b590, LENGTH = 0x100000
     hookSparxSetNull_Sgt : ORIGIN = 0x8007b598, LENGTH = 0x100000
     hookUpdateItemPhysics : ORIGIN = 0x8023f7f4, LENGTH = 0x100000
+    hookReImpl_SpyroDeath : ORIGIN = 0x800a31b0, LENGTH = 0x100000
+    hookReImpl_BlinkDeath : ORIGIN = 0x80020ebc, LENGTH = 0x100000
+    hookReImpl_HunterDeath : ORIGIN = 0x80047f4c, LENGTH = 0x100000
+    hookReImpl_ByrdDeath : ORIGIN = 0x8007c440, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -516,6 +520,46 @@ SECTIONS
         hookUpdateItemPhysics.o(.data)
         hookUpdateItemPhysics.o(.bss)
     } > hookUpdateItemPhysics
+
+    /* Custom section for our hook code */
+    .hookReImpl_SpyroDeath : 
+    {
+        hookReImpl_SpyroDeath.o(.text)
+        hookReImpl_SpyroDeath.o(.rodata)
+        hookReImpl_SpyroDeath.o(.rodata*)
+        hookReImpl_SpyroDeath.o(.data)
+        hookReImpl_SpyroDeath.o(.bss)
+    } > hookReImpl_SpyroDeath
+
+    /* Custom section for our hook code */
+    .hookReImpl_BlinkDeath : 
+    {
+        hookReImpl_BlinkDeath.o(.text)
+        hookReImpl_BlinkDeath.o(.rodata)
+        hookReImpl_BlinkDeath.o(.rodata*)
+        hookReImpl_BlinkDeath.o(.data)
+        hookReImpl_BlinkDeath.o(.bss)
+    } > hookReImpl_BlinkDeath
+
+    /* Custom section for our hook code */
+    .hookReImpl_HunterDeath : 
+    {
+        hookReImpl_HunterDeath.o(.text)
+        hookReImpl_HunterDeath.o(.rodata)
+        hookReImpl_HunterDeath.o(.rodata*)
+        hookReImpl_HunterDeath.o(.data)
+        hookReImpl_HunterDeath.o(.bss)
+    } > hookReImpl_HunterDeath
+
+    /* Custom section for our hook code */
+    .hookReImpl_ByrdDeath : 
+    {
+        hookReImpl_ByrdDeath.o(.text)
+        hookReImpl_ByrdDeath.o(.rodata)
+        hookReImpl_ByrdDeath.o(.rodata*)
+        hookReImpl_ByrdDeath.o(.data)
+        hookReImpl_ByrdDeath.o(.bss)
+    } > hookReImpl_ByrdDeath
 
     .MainCodecave : 
     {
