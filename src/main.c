@@ -510,7 +510,12 @@ void removePlayer(int portNr) {
     ItemHandler_SEKill(handler);
     players[portNr] = -1;
 
-    //ig_printf("");
+    //If removing this player results in 0 players, then reload the game
+    if (NumberOfPlayers() == 0) {
+        urghhhImDead();
+        PlayerState_RestartGame(&gPlayerState);
+        return;
+    }
 
     //Set the global references to the first available player
     int* list[4];
@@ -1054,14 +1059,14 @@ void MainUpdate() {
     }
 
     //Reload game if we've somehow ended up with 0 players
-    if (NumberOfPlayers() == 0) {
-        //Try to initialize. if it's STILL zero, then just reload
-        initializePlayers();
-        if (NumberOfPlayers() == 0) {
-            urghhhImDead();
-            PlayerState_RestartGame(&gPlayerState);
-        }
-    }
+    //if (NumberOfPlayers() == 0) {
+    //    //Try to initialize. if it's STILL zero, then just reload
+    //    initializePlayers();
+    //    if (NumberOfPlayers() == 0) {
+    //        urghhhImDead();
+    //        PlayerState_RestartGame(&gPlayerState);
+    //    }
+    //}
 
     //If player 1 is holding down dpad left, reset health and restart game.
     if (isButtonDown(Button_Dpad_Left, 0)) {
@@ -1078,16 +1083,6 @@ void MainUpdate() {
     }
 
     updatePlayerList();
-
-    //Skip checking for any input if the first player doesn't exist
-    //Set a cooldown timer so other players can't join within a short period of the first player joining
-    //if (players[0] == -1) {
-    //    playerJoinCooldownTimer = 20;
-    //    return;
-    //} else {
-    //    playerJoinCooldownTimer--;
-    //    if (playerJoinCooldownTimer < 0) { playerJoinCooldownTimer = 0; }
-    //}
 
     for (int i = 0; i < 4; i++) {
         if (players[i] == -1) { //Player slot not taken
