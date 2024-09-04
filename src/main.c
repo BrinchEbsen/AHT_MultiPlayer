@@ -286,6 +286,10 @@ int NumberOfPlayers() {
     return count;
 }
 
+bool OnlyPlayer1Exists() {
+    return (players[0] != -1) && (NumberOfPlayers() == 1);
+}
+
 //Get the number of player items currently referenced, who can have Sparx following around
 int NumberOfPlayersWhoCanHaveSparx() {
     int count = 0;
@@ -423,7 +427,9 @@ void updatePlayerList() {
 //Add new player and assign it to the given port number
 void addNewPlayer(int portNr) {
     //Only perform on players 2, 3 and 4
-    if ((portNr < 1) || (portNr > 3)) { return; }
+    if ((portNr < 0) || (portNr > 3)) { return; }
+
+    if (players[portNr] != -1) { return; } //Player already exists here
 
     //Get current map
     int* map = GetSpyroMap(0);
@@ -500,13 +506,11 @@ void removePlayer(int portNr) {
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
     if (handler == NULL) { return; }
 
-    //ItemHandler_Delete deleteFunc = GetHandlerDeleteFunc(handler);
-    //deleteFunc(handler);
+    //let's now delete the thing
     ItemHandler_SEKill(handler);
     players[portNr] = -1;
 
-    //Get the player 1 handler
-    if (players[0] == -1) { return; }
+    //ig_printf("");
 
     //Set the global references to the first available player
     int* list[4];
@@ -515,6 +519,30 @@ void removePlayer(int portNr) {
         int* newHandler = list[0];
         gpPlayer = newHandler;
         gpPlayerItem = (int*) *newHandler;
+    }
+
+    int* cameraHandler = (int*) *(gpGameWnd + (0x378/4));
+
+    if ((cameraHandler != NULL) && (count != 0)) {
+        int* vtable = (int*) *(cameraHandler + (0x4/4));
+        GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
+
+        EXRuntimeClass* class = getRTC();
+
+        if (class != 0x803bf64c) { //XSEItemHandler_Camera_Follow::classXItemHandler_Camera_Follow
+            int* newPlayer = list[0];
+            int* newPlayerItem = (int*) *newPlayer;
+            Players playerType = (Players) *(newPlayer + (0x578/4));
+
+            int* target = NULL;
+            if (cameraTargetItem == NULL) {
+                target = cameraTargetItem;
+            } else {
+                target = newPlayerItem;
+            }
+
+            SetCamera(Follow, ForcePos, target, playerType, 0);
+        }
     }
 
     //Finally set some notification values
@@ -572,6 +600,7 @@ void teleportPlayersToPlayer(int portNr) {
 int whoShouldControlCamera() {
     int port = 0;
     float biggestMag = 0.0;
+    bool first = true;
 
     for (int i = 0; i < 4; i++) {
         if (players[i] == -1) { continue; }
@@ -580,8 +609,10 @@ int whoShouldControlCamera() {
         float y = ig_fabsf(Pads_Analog[i].RStick_Y);
         float mag = ig_sqrtf((x*x) + (y*y));
 
-        if (i == 0) {
+        if (first) {
+            port = i;
             biggestMag = mag;
+            first = false;
             continue;
         }
 
@@ -616,9 +647,11 @@ bool itemExists(int* item) {
 //Create camera target item if it doesn't exist or if it's uninitialized
 void updateCameraTargetItem() {
     if (!itemExists(cameraTargetItem)) {
+        //Construct camera target item
         cameraTargetItem = XSEItem_CreateObject();
+        //add to iten environment
         XSEItemEnv_AddXSEItem(&theItemEnv, cameraTargetItem, 0);
-        ig_printf("Creating new item for camera focus\n");
+        //ig_printf("Creating new item for camera focus\n");
     }
 }
 
@@ -634,7 +667,7 @@ void PlayerHandlerPreUpdate(int* self) {
         if (players[i] == ID) {
             g_PadNum = i;
 
-            if (NumberOfPlayers() > 1) {
+            if (!OnlyPlayer1Exists()) {
                 //Set the global breath to this player's breath
                 gPlayerState.CurrentBreath = PLAYER_BREATHS[i];
                 gPlayerState.Health = PLAYER_HEALTH[i];
@@ -663,7 +696,7 @@ void PlayerHandlerPreUpdate(int* self) {
 
 void PlayerHandlerPostUpdate(int* self) {
     //After the update, we store the playerstate globals that resulted from the update.
-    if (NumberOfPlayers() <= 1) { return; }
+    if (OnlyPlayer1Exists()) { return; }
 
     int ID = *(self + 0x8/4);
     for (int i = 0; i < 4; i++) {
@@ -696,7 +729,7 @@ void PlayerHandlerPostUpdate(int* self) {
     }
 }
 
-//Make sure player 1 is referenced when Sparx is updated
+//Make sure the first available player is referenced when Sparx is updated
 void SparxPreUpdate(int* self) {
     if (players[0] == -1) { return; }
 
@@ -1007,7 +1040,7 @@ void MainUpdate() {
         return;
     }
 
-    if (NumberOfPlayers() == 1) {
+    if (OnlyPlayer1Exists()) {
         PLAYER_BREATHS[0] = gPlayerState.CurrentBreath;
     }
 
@@ -1018,6 +1051,16 @@ void MainUpdate() {
         }
     } else {
         showDebugTimer = 0;
+    }
+
+    //Reload game if we've somehow ended up with 0 players
+    if (NumberOfPlayers() == 0) {
+        //Try to initialize. if it's STILL zero, then just reload
+        initializePlayers();
+        if (NumberOfPlayers() == 0) {
+            urghhhImDead();
+            PlayerState_RestartGame(&gPlayerState);
+        }
     }
 
     //If player 1 is holding down dpad left, reset health and restart game.
@@ -1038,21 +1081,21 @@ void MainUpdate() {
 
     //Skip checking for any input if the first player doesn't exist
     //Set a cooldown timer so other players can't join within a short period of the first player joining
-    if (players[0] == -1) {
-        playerJoinCooldownTimer = 20;
-        return;
-    } else {
-        playerJoinCooldownTimer--;
-        if (playerJoinCooldownTimer < 0) { playerJoinCooldownTimer = 0; }
-    }
+    //if (players[0] == -1) {
+    //    playerJoinCooldownTimer = 20;
+    //    return;
+    //} else {
+    //    playerJoinCooldownTimer--;
+    //    if (playerJoinCooldownTimer < 0) { playerJoinCooldownTimer = 0; }
+    //}
 
     for (int i = 0; i < 4; i++) {
-        if (players[i] == -1) {
-            if (isButtonPressed(Button_A, i) && (playerJoinCooldownTimer == 0)) {
+        if (players[i] == -1) { //Player slot not taken
+            if (isButtonPressed(Button_A, i)) {
                 addNewPlayer(i);
             }
-        } else {
-            if ((i != 0) && isButtonDown(Button_Dpad_Right, i)) {
+        } else { //Player slot taken
+            if (isButtonDown(Button_Dpad_Right, i)) {
                 player_leave_timers[i]++;
                 if (player_leave_timers[i] >= player_leave_timer_max) {
                     player_leave_timers[i] = 0;
@@ -1379,7 +1422,7 @@ bool MapIsMinigame(int* map) {
     int* vtable = (int*) *(map + (0x74/4));
     GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
 
-    for (EXRuntimeClass* class = getRTC(map); class != NULL; class = class->pBaseClass) {
+    for (EXRuntimeClass* class = getRTC(); class != NULL; class = class->pBaseClass) {
         if (class == 0x803cc500) { //Compare with SEMap_MiniGame::classSEMap_MiniGame
             return true;
         }

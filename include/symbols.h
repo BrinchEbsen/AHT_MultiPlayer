@@ -157,7 +157,7 @@ typedef int (*ItemHandler_Delete)(int*);
 typedef void (*EXItem_DoItemPhysics)(int*);
 
 //Generic GetRuntimeClass function
-typedef EXRuntimeClass* (*GetRuntimeClass_func)(int*);
+typedef EXRuntimeClass* (*GetRuntimeClass_func)(void);
 
 //The SetMiniGameDie method on the SEMap_Minigame class
 typedef void (*SE_Map_SetMiniGameDie_func)(int*);
@@ -209,5 +209,7 @@ in_game int* XSEItem_CreateObject(void); //0x8023e070
 in_game bool ItemHandler_SEUpdate(int* self); //0x80241d64
 in_game void ItemHandler_ChangeAnimSkin(int* self, int* animator, uint skinHash); //0x800b9aa8
 in_game int* ItemEnv_FindUniqueIDHandler(int* self, uint handlerID, int index); //0x80240c48
+
+in_game bool SetCamera(CamTypes type, CamCreateMode mode, int* target, Players targetType, uint SetupFlags); //0x8012a104
 
 #endif //SYMBOLS_H

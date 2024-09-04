@@ -98,3 +98,4 @@ XSEItem_CreateObject = 0x8023e070;
 ItemHandler_SEUpdate = 0x80241d64;
 ItemHandler_ChangeAnimSkin = 0x800b9aa8;
 ItemEnv_FindUniqueIDHandler = 0x80240c48;
+SetCamera = 0x8012a104;
