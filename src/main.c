@@ -534,6 +534,7 @@ void removePlayer(int portNr) {
 
         EXRuntimeClass* class = getRTC();
 
+        //If it isn't a follower camera, set it to a new follower camera instance
         if (class != 0x803bf64c) { //XSEItemHandler_Camera_Follow::classXItemHandler_Camera_Follow
             int* newPlayer = list[0];
             int* newPlayerItem = (int*) *newPlayer;
@@ -547,6 +548,9 @@ void removePlayer(int portNr) {
             }
 
             SetCamera(Follow, ForcePos, target, playerType, 0);
+        } else {
+            int* flags = cameraHandler + (0x39c/4);
+            *flags = 0; //If it is already a follower camera, just reset the flags
         }
     }
 
