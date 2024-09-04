@@ -92,6 +92,7 @@ Player_SetMode = 0x80058414;
 Player_SetVisibility = 0x80060844;
 Player_TurnOn = 0x8005cb40;
 Player_UnlockControls = 0x8005bdfc;
+XSEItemEnv_AddXSEItem = 0x802409d0;
 XSEItem_CreateObject = 0x8023e070;
 ItemHandler_SEUpdate = 0x80241d64;
 ItemHandler_ChangeAnimSkin = 0x800b9aa8;

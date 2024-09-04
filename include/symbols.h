@@ -195,6 +195,7 @@ in_game int* Player_SetVisibility(int* self, bool onoff); //0x80060844
 in_game int* Player_TurnOn(int* self, bool onoff, int mode); //0x8005cb40
 in_game int* Player_UnlockControls(int* self); //0x8005bdfc
 
+in_game void XSEItemEnv_AddXSEItem(int* _theItemEnv, int* pItem, uint GroupFlags); //0x802409d0
 in_game int* XSEItem_CreateObject(void); //0x8023e070
 
 in_game bool ItemHandler_SEUpdate(int* self); //0x80241d64

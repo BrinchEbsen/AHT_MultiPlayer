@@ -606,13 +606,15 @@ bool itemExists(int* item) {
         i = i->next;
     }
 
-    return true;
+    return false;
 }
 
 //Create camera target item if it doesn't exist or if it's uninitialized
 void updateCameraTargetItem() {
     if (!itemExists(cameraTargetItem)) {
         cameraTargetItem = XSEItem_CreateObject();
+        XSEItemEnv_AddXSEItem(&theItemEnv, cameraTargetItem, 0);
+        ig_printf("Creating new item for camera focus\n");
     }
 }
 
