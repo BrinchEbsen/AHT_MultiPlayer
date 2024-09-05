@@ -260,6 +260,12 @@ void EXVector_Copy(EXVector* dest, EXVector* src) {
     dest->w = src->w;
 }
 
+//Get the flag for the gameloop being paused
+bool GameIsPaused() {
+    int flags = *((&gGameLoop) + (0x88/4));
+    return (flags & 0x80000000) != 0;
+}
+
 //Get a string representation of the given breath
 char* GetBreathName(Breaths breath) {
     switch (breath) {
@@ -1109,7 +1115,7 @@ void MainUpdate() {
     vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_hookFunc;
 
     //If the gameloop isn't running, abort
-    if (SE_GameLoop_State != 3) {
+    if ((SE_GameLoop_State != 3) || GameIsPaused()) {
         return;
     }
 
@@ -1126,20 +1132,15 @@ void MainUpdate() {
     updatePlayerList();
 
     //If there are no players, we're probably not in a state where we want new ones to join.
-    //Set cooldown timers to half a second to give the first player time to initialize
     if (NumberOfPlayers() == 0) {
-        playerJoinCooldownTimers[0] = 30;
-        playerJoinCooldownTimers[1] = 30;
-        playerJoinCooldownTimers[2] = 30;
-        playerJoinCooldownTimers[3] = 30;
-        showCoolDownTimer = false;
         return;
-    } else {
-        for (int i = 0; i < 4; i++) {
-            playerJoinCooldownTimers[i]--;
-            if (playerJoinCooldownTimers[i] < 0) {
-                playerJoinCooldownTimers[i] = 0;
-            }
+    }
+
+    //Update cooldown timers
+    for (int i = 0; i < 4; i++) {
+        playerJoinCooldownTimers[i]--;
+        if (playerJoinCooldownTimers[i] < 0) {
+            playerJoinCooldownTimers[i] = 0;
         }
     }
 
@@ -1685,6 +1686,8 @@ int ReImpl_XSEItemHandler_Player_Delete(int* self) {
 void ReImpl_XSEItemHandler_DoKill(int* self) {
     //We don't wanna unload Sparx if there's more than 1 player
     if (NumberOfPlayersWhoCanHaveSparx() > 1) { return; }
+
+    ig_printf("Killing sparx!\n");
 
     //This is just the regular code for a single player
     int* trigger = (int*) *(self + (0x10/4));
