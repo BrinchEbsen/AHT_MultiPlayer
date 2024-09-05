@@ -53,6 +53,7 @@ MEMORY
     hookReImpl_BlinkDeath : ORIGIN = 0x80020ebc, LENGTH = 0x100000
     hookReImpl_HunterDeath : ORIGIN = 0x80047f4c, LENGTH = 0x100000
     hookReImpl_ByrdDeath : ORIGIN = 0x8007c440, LENGTH = 0x100000
+    hookChangePlayer : ORIGIN = 0x8005bd04, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -527,6 +528,16 @@ SECTIONS
         hookReImpl_ByrdDeath.o(.data)
         hookReImpl_ByrdDeath.o(.bss)
     } > hookReImpl_ByrdDeath
+
+    /* Custom section for our hook code */
+    .hookChangePlayer : 
+    {
+        hookChangePlayer.o(.text)
+        hookChangePlayer.o(.rodata)
+        hookChangePlayer.o(.rodata*)
+        hookChangePlayer.o(.data)
+        hookChangePlayer.o(.bss)
+    } > hookChangePlayer
 
     .MainCodecave : 
     {

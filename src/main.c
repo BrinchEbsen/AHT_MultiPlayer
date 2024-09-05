@@ -169,6 +169,8 @@ int* cameraTargetItem = NULL;
 int players[4] = {-1, -1, -1, -1};
 //Last player that was updated
 int lastPlayerUpdated = 0;
+//Controller port number of the global player references. Should be made to match gpPlayer and gpPlayerItem.
+int globalRefPortNr = 0;
 
 //How many frames each player has held down the button to restore control/visibility
 int playerRestoreTimers[4] = {0, 0, 0, 0};
@@ -391,6 +393,7 @@ bool SetPlayerRefToPort(int portNr) {
     g_PadNum = portNr;
     gpPlayer = handler;
     gpPlayerItem = (int*) *handler;
+    globalRefPortNr = portNr;
 
     return true;
 }
@@ -523,6 +526,11 @@ void addNewPlayer(int portNr) {
 
     //get the "player" field in the global PlayerSetup
     Players* setup_Player = &gPlayerState.Setup.Player;
+    Players player1_Player = (Players) *(handler + (0x578/4));
+
+    *setup_Player = player1_Player;
+
+    //TODO: Let player spawn as the character they want
 
     //Ensure the player is loaded/loading
     PlayerLoader_PreLoad(&gPlayerLoader, *setup_Player);
@@ -535,11 +543,13 @@ void addNewPlayer(int portNr) {
     }
 
     //If the player is set to be Spyro, make it Ember for port 2 and Flame for port 3
-    if (*setup_Player == Player_Spyro) {
+    if ((*setup_Player == Player_Spyro) || (*setup_Player == Player_Ember) || (*setup_Player == Player_Flame)) {
         if (portNr == 1) {
             *setup_Player = Player_Ember;
         } else if (portNr == 2) {
             *setup_Player = Player_Flame;
+        } else {
+            *setup_Player = Player_Spyro;
         }
     }
 
@@ -584,6 +594,7 @@ void removePlayer(int portNr) {
         int* newHandler = list[0];
         gpPlayer = newHandler;
         gpPlayerItem = (int*) *newHandler;
+        globalRefPortNr = GetPortNrFromPlayerHandler(newHandler);
     }
 
     int* cameraHandler = (int*) *(gpGameWnd + (0x378/4));
@@ -735,6 +746,8 @@ void PlayerHandlerPreUpdate(int* self) {
     for (int i = 0; i < 4; i++) {
         if (players[i] == ID) {
             g_PadNum = i;
+            globalRefPortNr = i;
+            lastPlayerUpdated = i;
 
             if (!OnlyPlayer1Exists()) {
                 //Set the global breath to this player's breath
@@ -812,6 +825,7 @@ void SparxPreUpdate(int* self) {
         int* playerHandler = list[0];
         gpPlayer = playerHandler;
         gpPlayerItem = (int*) *playerHandler;
+        globalRefPortNr = GetPortNrFromPlayerHandler(playerHandler);
     }
 
     //If using multiplayer health mode, set to lowest of all player's health.
@@ -870,6 +884,7 @@ void MiscHandlerPreUpdate(int* self) {
             g_PadNum = GetPortNrFromPlayerHandler(closest);
             gpPlayer = closest;
             gpPlayerItem = (int*)(*closest);
+            globalRefPortNr = g_PadNum;
         }
     }
 }
@@ -1402,6 +1417,7 @@ void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
         if (isPlayer) {
             gpPlayer = handler;
             gpPlayerItem = i;
+            globalRefPortNr = GetPortNrFromPlayerHandler(handler);
         }
 
         EXItem_DoItemPhysics doPhysFunc = (EXItem_DoItemPhysics) *(vtable + (0x28/4));
@@ -1687,8 +1703,6 @@ void ReImpl_XSEItemHandler_DoKill(int* self) {
     //We don't wanna unload Sparx if there's more than 1 player
     if (NumberOfPlayersWhoCanHaveSparx() > 1) { return; }
 
-    ig_printf("Killing sparx!\n");
-
     //This is just the regular code for a single player
     int* trigger = (int*) *(self + (0x10/4));
 
@@ -1700,4 +1714,8 @@ void ReImpl_XSEItemHandler_DoKill(int* self) {
 
     //We're nop'ing the usual nullification of this, so it must be done here
     gpSparx = NULL;
+}
+
+void ChangePlayer_Hook() {
+    players[globalRefPortNr] = *(gpPlayer + (0x8/4));
 }
