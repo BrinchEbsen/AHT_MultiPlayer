@@ -561,6 +561,13 @@ void removePlayer(int portNr) {
     //Only perform on players 1, 2, 3 and 4
     if ((portNr < 0) || (portNr > 3)) { return; }
 
+    //We really don't care what player it is, if it's the last one, so just restart the game if that's the case
+    if (NumberOfPlayers() <= 1) {
+        SetAllHealthFull();
+        PlayerState_RestartGame(&gPlayerState);
+        return;
+    }
+
     if (players[portNr] == -1) { return; }
     
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
@@ -569,13 +576,6 @@ void removePlayer(int portNr) {
     //let's now delete the thing
     ItemHandler_SEKill(handler);
     players[portNr] = -1;
-
-    //If removing this player results in 0 players, then reload the game
-    if (NumberOfPlayers() == 0) {
-        SetAllHealthFull();
-        PlayerState_RestartGame(&gPlayerState);
-        return;
-    }
 
     //Set the global references to the first available player
     int* list[4];
