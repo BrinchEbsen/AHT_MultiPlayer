@@ -27,9 +27,6 @@ MEMORY
     patchHandleWaterDive3 : ORIGIN = 0x8008f64c, LENGTH = 0x100000
     patchHandleWaterDive4 : ORIGIN = 0x8008f580, LENGTH = 0x100000
     patchHandleWaterDive5 : ORIGIN = 0x8008f880, LENGTH = 0x100000
-    hookBlinkDead : ORIGIN = 0x80020f88, LENGTH = 0x100000
-    hookHunterDead : ORIGIN = 0x80047f84, LENGTH = 0x100000
-    hookSpyroDead : ORIGIN = 0x800a31e8, LENGTH = 0x100000
     hookTestBreathChange : ORIGIN = 0x8008707c, LENGTH = 0x100000
     hookSparxSetPlayerHealth1 : ORIGIN = 0x800f2944, LENGTH = 0x100000
     hookSparxSetPlayerHealth2 : ORIGIN = 0x800f2b20, LENGTH = 0x100000
@@ -270,36 +267,6 @@ SECTIONS
         patchHandleWaterDive5.o(.data)
         patchHandleWaterDive5.o(.bss)
     } > patchHandleWaterDive5
-
-    /* Custom section for our hook code */
-    .hookBlinkDead : 
-    {
-        hookBlinkDead.o(.text)
-        hookBlinkDead.o(.rodata)
-        hookBlinkDead.o(.rodata*)
-        hookBlinkDead.o(.data)
-        hookBlinkDead.o(.bss)
-    } > hookBlinkDead
-
-    /* Custom section for our hook code */
-    .hookHunterDead : 
-    {
-        hookHunterDead.o(.text)
-        hookHunterDead.o(.rodata)
-        hookHunterDead.o(.rodata*)
-        hookHunterDead.o(.data)
-        hookHunterDead.o(.bss)
-    } > hookHunterDead
-
-    /* Custom section for our hook code */
-    .hookSpyroDead : 
-    {
-        hookSpyroDead.o(.text)
-        hookSpyroDead.o(.rodata)
-        hookSpyroDead.o(.rodata*)
-        hookSpyroDead.o(.data)
-        hookSpyroDead.o(.bss)
-    } > hookSpyroDead
 
     /* Custom section for our hook code */
     .hookTestBreathChange : 

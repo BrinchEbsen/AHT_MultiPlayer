@@ -208,6 +208,7 @@ in_game int* XSEItem_CreateObject(void); //0x8023e070
 
 in_game bool ItemHandler_SEUpdate(int* self); //0x80241d64
 in_game void ItemHandler_ChangeAnimSkin(int* self, int* animator, uint skinHash); //0x800b9aa8
+//Get the handler from the item environment that uses the given handler ID, starting from the given index.
 in_game int* ItemEnv_FindUniqueIDHandler(int* self, uint handlerID, int index); //0x80240c48
 
 in_game bool SetCamera(CamTypes type, CamCreateMode mode, int* target, Players targetType, uint SetupFlags); //0x8012a104

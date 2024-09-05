@@ -7,14 +7,18 @@
 #include <symbols.h>
 #include <screenmath.h>
 
+//Temporary raycast memory
 struct RayVecs {
     EXVector vecs[3];
 };
 typedef struct RayVecs RayVecs;
 
+//Vtable hook stuff
+
 int GUI_PanelItem_v_StateRunning_Hook(int* self);
 GUI_PanelItem_v_StateRunning_func GUI_PanelItem_v_StateRunning_hookFunc = GUI_PanelItem_v_StateRunning_Hook;
 
+//Empty color
 XRGBA COLOR_BLANK = {0, 0, 0, 0};
 
 XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
@@ -32,6 +36,7 @@ XRGBA* PLAYER_COLORS[] = {
     &COLOR_P4
 };
 
+//Colors of health when the hitpoint upgrade isn't purchased
 XRGBA* HEALTH_COLORS_NO_UPGRADE[] = {
     /*0x00*/ &COLOR_BLACK,
     /*0x20*/ &COLOR_BLACK,
@@ -41,6 +46,7 @@ XRGBA* HEALTH_COLORS_NO_UPGRADE[] = {
     /*0xA0*/ &COLOR_P4
 };
 
+//Colors of health when the hitpoint upgrade is purchased
 XRGBA* HEALTH_COLORS_UPGRADE[] = {
     /*0x00*/ &COLOR_BLACK,
     /*0x20*/ &COLOR_BLACK,
@@ -50,10 +56,13 @@ XRGBA* HEALTH_COLORS_UPGRADE[] = {
     /*0xA0*/ &COLOR_P4
 };
 
+//Hotswap values for temporary raycast memory
 RayVecs PLAYER_RAYVECS[4];
 
+//The names that are displayed above the players
 char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
 
+//Hotswap values for selected breath
 Breaths PLAYER_BREATHS[] = {
     Breath_Fire,
     Breath_Fire,
@@ -61,13 +70,20 @@ Breaths PLAYER_BREATHS[] = {
     Breath_Fire
 };
 
+//Hotswap values for health
 int PLAYER_HEALTH[] = { 0xA0, 0xA0, 0xA0, 0xA0 };
 
+//Hotswap values for whether supercharge is active
 bool PLAYER_SUPERCHARGE[] = {false, false, false, false};
+//Hotswap values for supercharge timers
 float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
 
+//Hotswap values for whether invincibility is active
 bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
+//Hotswap values for invincibility timers
 float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+
+//VTABLES
 
 int SPYRO_VTABLE = 0x8040B908;
 int HUNTER_VTABLE = 0x80407338;
@@ -82,6 +98,8 @@ int SPARX_VTABLE = 0x8040f8b0;
 int CAMERA_FOLLOW_VTABLE = 0x804161b0;
 int BLINKYBULLET_VTABLE = 0x80408988;
 int LOCKEDCHEST_VTABLE = 0x80429b18;
+
+//Lookup tables for characters and their vtables
 
 #define CHARACTER_AMOUNT 8
 Players CHARACTERS[] = {
@@ -105,16 +123,22 @@ int CHARACTER_VTABLES[] = {
     0x80405428  //Flame
 };
 
+//Whether players have been initialized yet (mostly for testing reasons)
 bool initialized = false;
+//Whether to display debug information on the screen
 bool showDebug = false;
+//How many frames the "show debug button" has been held
 int showDebugTimer = 0;
 
+//Whether a notification is being shown for the given player
 bool playerNotifShowing[] = {
     false,
     false,
     false,
     false
 };
+
+//Y-positions of the player notifications on the left of the screen
 u16 playerNotifYOffets[] = {
     250,
     265,
@@ -122,50 +146,70 @@ u16 playerNotifYOffets[] = {
     295
 };
 
+//Notif timer for when a player joins
 int playerJoinedNotifTimers[] = {0, 0, 0, 0};
 
+//Notif timer for when a player isn't loaded and has to wait before joining
 int notLoadedYetNotifTimers[] = {0, 0, 0, 0};
 
+//How many frames the "restart game" button has been held
 int restartGameTimer = 0;
+//How many frames held before restarting
 int restartGameTimerMax = 80;
 
+//Notif timer for when a player selects a new breath
 int breathSelectNotifTimers[] = {0, 0, 0, 0};
+//This is set when any player selects a new breath
 Breaths lastBreathChangedTo = Breath_Fire;
 
+//The custom item that the follower camera is set to target
 int* cameraTargetItem = NULL;
-
-int playerJoinCooldownTimer = 0;
 
 //Contains the itemhandler ID's for each of the four players. -1 if not in use.
 int players[4] = {-1, -1, -1, -1};
+//Last player that was updated
 int lastPlayerUpdated = 0;
 
-//Timers for how long each player has held down the button to restore control/visibility
-int player_restore_timers[4] = {0, 0, 0, 0};
-int player_restore_timer_max = 60;
+//How many frames each player has held down the button to restore control/visibility
+int playerRestoreTimers[4] = {0, 0, 0, 0};
+//How many frames held before restoring
+int playerRestoreTimerMax = 60;
 
+//Notif timer for when a player is restoring control
 int playerRestoreNotifTimers[] = {0, 0, 0, 0};
 
-int player_leave_timers[4] = {0, 0, 0, 0};
-int player_leave_timer_max = 90;
+//How many frames each player has held down the button to leave
+int playerLeaveTimers[4] = {0, 0, 0, 0};
+//How many frames held before leaving
+int playerLeaveTimerMax = 90;
 
+//Notif timer for when a player is leaving
 int playerLeaveNotifTimers[] = {0, 0, 0, 0};
+
+//How many frames left for each player until they can join
+int playerJoinCooldownTimers[] = {0, 0, 0, 0};
+//The value the cooldown timers are set to when a player dies
+int playerJoinCooldownTimerMax = 60 * 20; //20 seconds
+
+bool showCoolDownTimer = false;
 
 //Check for the Z button being pressed twice within 20 frames at the given pad number
 bool checkZDoublePress(int padNr) {
+    //Number of presses within the timer window
     static int numPressed[] = {0, 0, 0, 0};
+    //Number of frames since first press
     static int timer[] = {0, 0, 0, 0};
 
     bool zPressed = isButtonPressed(Button_Z, padNr);
 
+    //If Z has not been pressed now or before, reset timer and return
     if (numPressed[padNr] == 0 && !zPressed) {
-        //Have not pressed and am not pressing
         timer[padNr] = 0;
 
         return false;
     }
 
-    //Have either pressed it before or am pressing now
+    //Have either pressed it before or am pressing now, so increase timer
     timer[padNr]++;
 
     //If timer is within the limit
@@ -216,6 +260,7 @@ void EXVector_Copy(EXVector* dest, EXVector* src) {
     dest->w = src->w;
 }
 
+//Get a string representation of the given breath
 char* GetBreathName(Breaths breath) {
     switch (breath) {
         case Breath_Fire:
@@ -231,6 +276,7 @@ char* GetBreathName(Breaths breath) {
     return "Invalid";
 }
 
+//Get the color associated with the given health value
 XRGBA* GetHealthColor(int health) {
     //Sparx' colors are different depending on if the upgrade has been bought
     bool gottenUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
@@ -245,35 +291,21 @@ XRGBA* GetHealthColor(int health) {
     }
 }
 
-//Get the function pointer to the playersetup function for the given map
+//Get the function pointer to the PlayerSetup method for the given map
 SE_Map_v_PlayerSetup GetMapPlayerSetupFunc(int* map) {
     int* vtable = (int*) *(map + (0x74/4));
 
     return *(vtable + (0xc0/4));
 }
 
+//Get the function pointer to the Delete method for the given player handler
 ItemHandler_Delete GetHandlerDeleteFunc(int* handler) {
     int* vtable = (int*) *(handler + (0x4/4));
 
     return *(vtable + (0x50/4));
 }
 
-uint getPlayerSkinHash(int* handler) {
-    if (handler == NULL) { return NULL; }
-
-    int* item = (int*)(*handler);
-    int* anim = *(item + (0x144/4));
-
-    if (anim == NULL) { return NULL; }
-
-    int* skinAnim = *(anim + (0x110/4));
-
-    if (skinAnim == NULL) { return NULL; }
-
-    return *(skinAnim + (0xD0/4));
-}
-
-//Get the number of player items currently referenced
+//Get the number of player items currently kept track of
 int NumberOfPlayers() {
     int count = 0;
 
@@ -286,11 +318,7 @@ int NumberOfPlayers() {
     return count;
 }
 
-bool OnlyPlayer1Exists() {
-    return (players[0] != -1) && (NumberOfPlayers() == 1);
-}
-
-//Get the number of player items currently referenced, who can have Sparx following around
+//Get the number of player items currently kept track of, who can have Sparx following around
 int NumberOfPlayersWhoCanHaveSparx() {
     int count = 0;
 
@@ -316,6 +344,25 @@ int NumberOfPlayersWhoCanHaveSparx() {
     return count;
 }
 
+//Check if the only player is player 1
+bool OnlyPlayer1Exists() {
+    return (players[0] != -1) && (NumberOfPlayers() == 1);
+}
+
+//Check if the given handler is the only player left.
+bool handlerIsOnlyPlayerLeft(int* handler) {
+    int ID = *(handler + (0x8/4));
+
+    for (int i = 0; i < 4; i++) {
+        if (players[i] == ID) { continue; } //ignore self
+
+        if (players[i] != -1) { return false; }
+    }
+
+    return true;
+}
+
+//Get the associated controller port index for the given player handler
 int GetPortNrFromPlayerHandler(int* handler) {
     if (handler == NULL) { return 0; }
 
@@ -329,6 +376,8 @@ int GetPortNrFromPlayerHandler(int* handler) {
     return 0;
 }
 
+//Set the global port number, handler reference and handler item reference to the player at the given port number.
+//Returns whether the player handler could be found.
 bool SetPlayerRefToPort(int portNr) {
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
     if (handler == NULL) { return false; }
@@ -354,7 +403,7 @@ bool HandlerIsPlayer(int* handler) {
     return false;
 }
 
-//Returns amount of handlers found, and inserts them into the given list of size 4
+//Runs through all players, inserts the handlers into the given list of size 4, and returns amount of handlers found.
 int GetArrayOfPlayerHandlers(int** list) {
     int listindex = 0;
     
@@ -374,18 +423,22 @@ int GetArrayOfPlayerHandlers(int** list) {
 
 //Reset all player references and search the item list to populate it again.
 void initializePlayers() {
+    //Reset references
     players[0] = -1;
     players[1] = -1;
     players[2] = -1;
     players[3] = -1;
 
+    //Loop through item list
     if (ItemEnv_ItemCount != 0) {
         EXDListItem* item = ItemEnv_ItemList->head;
 
         int playerIndex = 0;
         while (item != NULL) {
+            //Get handler
             int* handler = (int*) *((int*)item + (0x14C/4));
             
+            //If the item is that of a player, insert it into our references list
             if (HandlerIsPlayer(handler)) {
                 int ID = *(handler + 0x8/4);
                 players[playerIndex] = ID;
@@ -497,6 +550,7 @@ void addNewPlayer(int portNr) {
     playerLeaveNotifTimers[portNr] = 0;
 }
 
+//Remove a player from the game, restore follower camera, reload game if this was the last player left
 void removePlayer(int portNr) {
     //Only perform on players 1, 2, 3 and 4
     if ((portNr < 0) || (portNr > 3)) { return; }
@@ -512,7 +566,7 @@ void removePlayer(int portNr) {
 
     //If removing this player results in 0 players, then reload the game
     if (NumberOfPlayers() == 0) {
-        urghhhImDead();
+        SetAllHealthFull();
         PlayerState_RestartGame(&gPlayerState);
         return;
     }
@@ -664,8 +718,8 @@ void updateCameraTargetItem() {
     }
 }
 
-//Make sure the right pad is used for when the player is processed
-//Also sets the global references to make things work correctly
+//Code that runs prior to a player's SEUpdate.
+//Apply hotswap values if players have joined.
 void PlayerHandlerPreUpdate(int* self) {
     gpPlayer = self;
     gpPlayerItem = (int*)(*self);
@@ -703,6 +757,8 @@ void PlayerHandlerPreUpdate(int* self) {
     }
 }
 
+//Code that runs after a player's SEUpdate.
+//Store resulting hotswap values for the player.
 void PlayerHandlerPostUpdate(int* self) {
     //After the update, we store the playerstate globals that resulted from the update.
     if (OnlyPlayer1Exists()) { return; }
@@ -738,7 +794,9 @@ void PlayerHandlerPostUpdate(int* self) {
     }
 }
 
-//Make sure the first available player is referenced when Sparx is updated
+//Code that runs before Sparx updates.
+//Follow the first available player.
+//Make Sparx react to the lowest health among players.
 void SparxPreUpdate(int* self) {
     if (players[0] == -1) { return; }
 
@@ -764,7 +822,8 @@ void SparxPreUpdate(int* self) {
     }
 }
 
-//Every handler sets the global references to whichever player is closest
+//Code that runs before any other handler updates.
+//Set global references to the closest player.
 void MiscHandlerPreUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
@@ -802,14 +861,15 @@ void MiscHandlerPreUpdate(int* self) {
         }
 
         if (closest != NULL) {
+            g_PadNum = GetPortNrFromPlayerHandler(closest);
             gpPlayer = closest;
             gpPlayerItem = (int*)(*closest);
         }
     }
 }
 
-//Runs AFTER camera_follow's SEUpdate.
-//Manipulate camera variables to make them work with multiple players
+//Code that runs after the follower camera's SEUpdate.
+//Manipulate camera variables to make them work with multiple players.
 void CameraFollowPostUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
@@ -935,107 +995,111 @@ void DrawPlayerMarker(int portNr) {
     EXVector2 screenPos = {0.0};
     WorldToDisp(&screenPos, &pos);
 
+    //To make sure it doesn't clip the edges
     static float xBuffer = 20.0;
     static float yBuffer = 40.0;
 
-    //Render if in a valid screen position
-    if (/*isInFrontOfCam(&pos) && isWithinFrame(&screenPos)*/true) {
-        //Clamp vertical
-        if (screenPos.y < yBuffer) {
-            screenPos.y = yBuffer;
-        }
-        if (screenPos.y > FRAME_SIZE_Y) {
-            screenPos.y = FRAME_SIZE_Y;
-        }
-        //Clamp horizontal
-        if (screenPos.x < xBuffer) {
+    //Now we decide the actual position of the marker by making it stick to the edges if offscreen
+
+    //Clamp vertical
+    if (screenPos.y < yBuffer) {
+        screenPos.y = yBuffer;
+    }
+    if (screenPos.y > FRAME_SIZE_Y) {
+        screenPos.y = FRAME_SIZE_Y;
+    }
+    //Clamp horizontal
+    if (screenPos.x < xBuffer) {
+        screenPos.x = xBuffer;
+    }
+    if (screenPos.x > FRAME_SIZE_X-xBuffer) {
+        screenPos.x = FRAME_SIZE_X-xBuffer;
+    }
+
+    //If it's not in front of the camera, make it strictly stick to the edges
+    //and invert their positions to avoid weirdness
+    if (!isInFrontOfCam(&pos)) {
+        //Height may vary, but x position must strictly be either all the way left/right
+        if (screenPos.x < (FRAME_SIZE_X/2)) {
             screenPos.x = xBuffer;
-        }
-        if (screenPos.x > FRAME_SIZE_X-xBuffer) {
+        } else {
             screenPos.x = FRAME_SIZE_X-xBuffer;
         }
 
-        if (!isInFrontOfCam(&pos)) {
-            if (screenPos.x < (FRAME_SIZE_X/2)) {
-                screenPos.x = xBuffer;
-            } else {
-                screenPos.x = FRAME_SIZE_X-xBuffer;
-            }
+        //Invert X and Y position
+        screenPos.y = FRAME_SIZE_Y - screenPos.y + yBuffer;
+        screenPos.x = FRAME_SIZE_X - screenPos.x;
+    }
 
-            //Invert X and Y position
-            screenPos.y = FRAME_SIZE_Y - screenPos.y + (yBuffer);
-            screenPos.x = FRAME_SIZE_X - screenPos.x;
-        }
+    //Position to display name
+    EXVector2 textPos = {
+        .x = screenPos.x - 10.0,
+        .y = screenPos.y - 30.0
+    };
 
-        //textPrintF(100, playerNotifYOffets[portNr], TopLeft, PLAYER_COLORS[portNr], 1.0f, "%.2f %.2f", screenPos.x, screenPos.y);
+    //Name
 
-        //Position to display name
-        EXVector2 textPos = {
-            .x = screenPos.x - 10.0,
-            .y = screenPos.y - 30.0
-        };
+    textPrint(
+        PLAYER_NAMES[portNr], 0,
+        (int)textPos.x,
+        (int)textPos.y,
+        TopLeft, PLAYER_COLORS[portNr], 1.0f
+    );
 
-        //Name
-        textPrint(
-            PLAYER_NAMES[portNr], 0,
-            (int)textPos.x,
-            (int)textPos.y,
-            TopLeft, PLAYER_COLORS[portNr], 1.0f
-        );
+    //Health indicator
 
-        //Health indicator
+    EXRect r = {
+        (int) screenPos.x -3 - 18,
+        (int) screenPos.y -3 - 20,
+        6,
+        6
+    };
+
+    XRGBA* col = GetHealthColor(PLAYER_HEALTH[portNr]);
+    
+    //Logic to make the indicator flash red if player is on 1HP
+    static int flashingTimer = 0;
+    flashingTimer++;
+    if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
+        col = &COLOR_RED;
+    }
+    if (flashingTimer > 40) { flashingTimer = 0; }
+
+    Util_DrawRect(gpPanelWnd, &r, col);
+
+    //Powerup status
+
+    XRGBA* powerUpCol = NULL;
+    float current;
+    float max;
+
+    //Decide the size and color of the bar
+    if (PLAYER_INVINCIBILITY[portNr]) {
+        powerUpCol = &COLOR_INV;
+        current = PLAYER_INVINCIBILITY_TIMER[portNr];
+        max = gPlayerState.InvincibleTimerMax;
+    } else if (PLAYER_SUPERCHARGE[portNr]) {
+        powerUpCol = &COLOR_SUP;
+        current = PLAYER_SUPERCHARGE_TIMER[portNr];
+        max = gPlayerState.SuperchargeTimerMax;
+    }
+
+    //if no color was decided, don't draw it.
+    if (powerUpCol != NULL) {
+        static size = 30;
 
         EXRect r = {
-            (int) screenPos.x -3 - 18,
-            (int) screenPos.y -3 - 20,
-            6,
+            (int) screenPos.x - 18,
+            (int) screenPos.y - 37,
+            size,
             6
         };
 
-        XRGBA* col = GetHealthColor(PLAYER_HEALTH[portNr]);
-        
-        //Logic to make the indicator flash red if player is on 1HP
-        static int flashingTimer = 0;
-        flashingTimer++;
-        if ((flashingTimer > 20) && (col == &COLOR_BLACK)) {
-            col = &COLOR_RED;
-        }
-        if (flashingTimer > 40) { flashingTimer = 0; }
+        Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
 
-        Util_DrawRect(gpPanelWnd, &r, col);
+        r.w *= (current/max);
 
-        //Powerup status
-
-        XRGBA* powerUpCol = NULL;
-        float current;
-        float max;
-
-        if (PLAYER_INVINCIBILITY[portNr]) {
-            powerUpCol = &COLOR_INV;
-            current = PLAYER_INVINCIBILITY_TIMER[portNr];
-            max = gPlayerState.InvincibleTimerMax;
-        } else if (PLAYER_SUPERCHARGE[portNr]) {
-            powerUpCol = &COLOR_SUP;
-            current = PLAYER_SUPERCHARGE_TIMER[portNr];
-            max = gPlayerState.SuperchargeTimerMax;
-        }
-
-        if (powerUpCol != NULL) {
-            static size = 30;
-
-            EXRect r = {
-                (int) screenPos.x - 18,
-                (int) screenPos.y - 37,
-                size,
-                6
-            };
-
-            Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
-
-            r.w *= (current/max);
-
-            Util_DrawRect(gpPanelWnd, &r, powerUpCol);
-        }
+        Util_DrawRect(gpPanelWnd, &r, powerUpCol);
     }
 }
 
@@ -1049,10 +1113,7 @@ void MainUpdate() {
         return;
     }
 
-    if (OnlyPlayer1Exists()) {
-        PLAYER_BREATHS[0] = gPlayerState.CurrentBreath;
-    }
-
+    //debug
     if (isButtonDown(Button_Dpad_Down, 0)) {
         showDebugTimer++;
         if (showDebugTimer == 60) {
@@ -1062,21 +1123,31 @@ void MainUpdate() {
         showDebugTimer = 0;
     }
 
-    //Reload game if we've somehow ended up with 0 players
-    //if (NumberOfPlayers() == 0) {
-    //    //Try to initialize. if it's STILL zero, then just reload
-    //    initializePlayers();
-    //    if (NumberOfPlayers() == 0) {
-    //        urghhhImDead();
-    //        PlayerState_RestartGame(&gPlayerState);
-    //    }
-    //}
+    updatePlayerList();
+
+    //If there are no players, we're probably not in a state where we want new ones to join.
+    //Set cooldown timers to half a second to give the first player time to initialize
+    if (NumberOfPlayers() == 0) {
+        playerJoinCooldownTimers[0] = 30;
+        playerJoinCooldownTimers[1] = 30;
+        playerJoinCooldownTimers[2] = 30;
+        playerJoinCooldownTimers[3] = 30;
+        showCoolDownTimer = false;
+        return;
+    } else {
+        for (int i = 0; i < 4; i++) {
+            playerJoinCooldownTimers[i]--;
+            if (playerJoinCooldownTimers[i] < 0) {
+                playerJoinCooldownTimers[i] = 0;
+            }
+        }
+    }
 
     //If player 1 is holding down dpad left, reset health and restart game.
     if (isButtonDown(Button_Dpad_Left, 0)) {
         restartGameTimer++;
         if (restartGameTimer >= restartGameTimerMax) {
-            urghhhImDead();
+            SetAllHealthFull();
             PlayerState_RestartGame(&gPlayerState);
         }
         if (restartGameTimer > restartGameTimerMax) {
@@ -1086,22 +1157,21 @@ void MainUpdate() {
         restartGameTimer = 0;
     }
 
-    updatePlayerList();
-
+    //PRE: There is at least one player alive, and we're ready for them to leave or others to join
     for (int i = 0; i < 4; i++) {
         if (players[i] == -1) { //Player slot not taken
-            if (isButtonPressed(Button_A, i)) {
+            if (isButtonPressed(Button_A, i) && (playerJoinCooldownTimers[i] == 0)) {
                 addNewPlayer(i);
             }
         } else { //Player slot taken
             if (isButtonDown(Button_Dpad_Right, i)) {
-                player_leave_timers[i]++;
-                if (player_leave_timers[i] >= player_leave_timer_max) {
-                    player_leave_timers[i] = 0;
+                playerLeaveTimers[i]++;
+                if (playerLeaveTimers[i] >= playerLeaveTimerMax) {
+                    playerLeaveTimers[i] = 0;
                     removePlayer(i);
                 }
             } else {
-                player_leave_timers[i] = 0;
+                playerLeaveTimers[i] = 0;
             }
 
             if (checkZDoublePress(i)) {
@@ -1109,13 +1179,13 @@ void MainUpdate() {
             }
 
             if (isButtonDown(Button_Dpad_Up, i)) {
-                player_restore_timers[i]++;
-                if (player_restore_timers[i] >= player_restore_timer_max) {
-                    player_restore_timers[i] = 0;
+                playerRestoreTimers[i]++;
+                if (playerRestoreTimers[i] >= playerRestoreTimerMax) {
+                    playerRestoreTimers[i] = 0;
                     restorePlayerControl(i);
                 }
             } else {
-                player_restore_timers[i] = 0;
+                playerRestoreTimers[i] = 0;
             }
         }
     }
@@ -1139,7 +1209,7 @@ void DrawUpdate() {
         bool alreadyShowing = false;
 
         //LEAVING NOTIFICATION
-        if (player_leave_timers[i] > 20) {
+        if (playerLeaveTimers[i] > 20) {
             if (!alreadyShowing) {
                 textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Leaving...", i+1);
 
@@ -1153,7 +1223,7 @@ void DrawUpdate() {
                 Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
 
                 //Subtract 20 to make the timer start from the left
-                r.w = (float)r.w * ((float)(player_leave_timers[i]-20) / (float)(player_leave_timer_max-20));
+                r.w = (float)r.w * ((float)(playerLeaveTimers[i]-20) / (float)(playerLeaveTimerMax-20));
 
                 Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
 
@@ -1172,7 +1242,7 @@ void DrawUpdate() {
         }
 
         //MAKING UNSTUCK NOTIFICATION
-        if (player_restore_timers[i] > 20) {
+        if (playerRestoreTimers[i] > 20) {
             if (!alreadyShowing) {
                 textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Restoring...", i+1);
 
@@ -1186,7 +1256,7 @@ void DrawUpdate() {
                 Util_DrawRect(gpPanelWnd, &r, &COLOR_BLACK);
 
                 //Subtract 20 to make the timer start from the left
-                r.w = (float)r.w * ((float)(player_restore_timers[i]-20) / (float)(player_restore_timer_max-20));
+                r.w = (float)r.w * ((float)(playerRestoreTimers[i]-20) / (float)(playerRestoreTimerMax-20));
 
                 Util_DrawRect(gpPanelWnd, &r, &COLOR_GREEN);
 
@@ -1223,6 +1293,8 @@ void DrawUpdate() {
             }
             playerJoinedNotifTimers[i]--;
         }
+
+        playerNotifShowing[i] = alreadyShowing;
     }
 
     if (restartGameTimer > 20) {
@@ -1323,7 +1395,7 @@ void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
     while (i != NULL) {
         int* vtable = (int*) *(((int*)i) + (0x18/4));
 
-        int* handler = *((int*)i) + (0x14C/4);
+        int* handler = *(((int*)i) + (0x14C/4));
 
         bool isPlayer = HandlerIsPlayer(handler);
         if (isPlayer) {
@@ -1394,25 +1466,13 @@ void Butterfly_Special_SetHealth_Hook(int* self, int health) {
     PLAYER_HEALTH[3] = 0xA0;
 }
 
-//Runs after the "urghhhImDead" function for Spyro, Blink and Hunter.
-void urghhhImDead() {
+//Sets all players' health and the global health to full
+void SetAllHealthFull() {
     gPlayerState.Health = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
     PLAYER_HEALTH[1] = 0xA0;
     PLAYER_HEALTH[2] = 0xA0;
     PLAYER_HEALTH[3] = 0xA0;
-}
-
-bool handlerIsOnlyPlayerLeft(int* handler) {
-    int ID = *(handler + (0x8/4));
-
-    for (int i = 0; i < 4; i++) {
-        if (players[i] == ID) { continue; } //ignore self
-
-        if (players[i] != -1) { return false; }
-    }
-
-    return true;
 }
 
 //Returns whether or not a map inherets from or is an instance of SEMap_MiniGame
@@ -1441,6 +1501,8 @@ void ReImpl_SpyroHunter_urghhhImDead(int* self) {
         gPlayerState.Health = 0xA0;
         PLAYER_HEALTH[portNr] = 0xA0;
 
+        playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
+        showCoolDownTimer = true;
         removePlayer(portNr);
     }
 }
@@ -1474,6 +1536,8 @@ void ReImpl_Blink_urghhhImDead(int* self) {
         gPlayerState.Health = 0xA0;
         PLAYER_HEALTH[portNr] = 0xA0;
 
+        playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
+        showCoolDownTimer = true;
         removePlayer(portNr);
     }
 }
@@ -1502,6 +1566,8 @@ void ReImpl_SgtByrd_urghhhImDead(int* self) {
         gPlayerState.Health = 0xA0;
         PLAYER_HEALTH[portNr] = 0xA0;
 
+        playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
+        showCoolDownTimer = true;
         removePlayer(portNr);
     }
 }
