@@ -184,6 +184,7 @@ int playerRestoreNotifTimers[] = {0, 0, 0, 0};
 int playerLeaveTimers[4] = {0, 0, 0, 0};
 //How many frames held before leaving
 int playerLeaveTimerMax = 90;
+bool leaveBecauseDeath[] = {false, false, false, false};
 
 //Notif timer for when a player is leaving
 int playerLeaveNotifTimers[] = {0, 0, 0, 0};
@@ -191,7 +192,7 @@ int playerLeaveNotifTimers[] = {0, 0, 0, 0};
 //How many frames left for each player until they can join
 int playerJoinCooldownTimers[] = {0, 0, 0, 0};
 //The value the cooldown timers are set to when a player dies
-int playerJoinCooldownTimerMax = 60 * 20; //20 seconds
+int playerJoinCooldownTimerMax = 60 * 10; //20 seconds
 
 bool showCoolDownTimer = false;
 
@@ -567,7 +568,7 @@ void addNewPlayer(int portNr) {
 }
 
 //Remove a player from the game, restore follower camera, reload game if this was the last player left
-void removePlayer(int portNr) {
+void removePlayer(int portNr, bool died) {
     //Only perform on players 1, 2, 3 and 4
     if ((portNr < 0) || (portNr > 3)) { return; }
 
@@ -628,6 +629,7 @@ void removePlayer(int portNr) {
     //Finally set some notification values
     playerJoinedNotifTimers[portNr] = 0;
     playerLeaveNotifTimers[portNr] = 60;
+    leaveBecauseDeath[portNr] = died;
 }
 
 //Set a player to be visible and controllable
@@ -1147,7 +1149,12 @@ void MainUpdate() {
     updatePlayerList();
 
     //If there are no players, we're probably not in a state where we want new ones to join.
+    //We'll also wanna reset the join timers
     if (NumberOfPlayers() == 0) {
+        playerJoinCooldownTimers[0] = 0;
+        playerJoinCooldownTimers[1] = 0;
+        playerJoinCooldownTimers[2] = 0;
+        playerJoinCooldownTimers[3] = 0;
         return;
     }
 
@@ -1184,7 +1191,7 @@ void MainUpdate() {
                 playerLeaveTimers[i]++;
                 if (playerLeaveTimers[i] >= playerLeaveTimerMax) {
                     playerLeaveTimers[i] = 0;
-                    removePlayer(i);
+                    removePlayer(i, false);
                 }
             } else {
                 playerLeaveTimers[i] = 0;
@@ -1250,7 +1257,9 @@ void DrawUpdate() {
         //LEAVE NOTIFICATION
         if (playerLeaveNotifTimers[i] > 0) {
             if (!alreadyShowing) {
-                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: Left", i+1);
+                char* cause = leaveBecauseDeath[i] ? "died" : "left";
+
+                textPrintF(10, playerNotifYOffets[i], TopLeft, PLAYER_COLORS[i], 1.0f, "P%d: %s", i+1, cause);
                 alreadyShowing = true;
             }
             
@@ -1308,6 +1317,12 @@ void DrawUpdate() {
                 alreadyShowing = true;
             }
             playerJoinedNotifTimers[i]--;
+        }
+
+        if (!alreadyShowing && (playerJoinCooldownTimers[i] > 0)) {
+            float time = (float)playerJoinCooldownTimers[i] / 60;
+
+            textPrintF(10, playerNotifYOffets[i], TopLeft, &COLOR_WHITE, 1.0f, "P%d: %.1f", i+1, time);
         }
 
         playerNotifShowing[i] = alreadyShowing;
@@ -1520,7 +1535,7 @@ void ReImpl_SpyroHunter_urghhhImDead(int* self) {
 
         playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
         showCoolDownTimer = true;
-        removePlayer(portNr);
+        removePlayer(portNr, true);
     }
 }
 
@@ -1555,7 +1570,7 @@ void ReImpl_Blink_urghhhImDead(int* self) {
 
         playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
         showCoolDownTimer = true;
-        removePlayer(portNr);
+        removePlayer(portNr, true);
     }
 }
 
@@ -1585,7 +1600,7 @@ void ReImpl_SgtByrd_urghhhImDead(int* self) {
 
         playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
         showCoolDownTimer = true;
-        removePlayer(portNr);
+        removePlayer(portNr, true);
     }
 }
 
