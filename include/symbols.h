@@ -185,6 +185,10 @@ in_game bool FileManager_IsGeoLoaded(int* _gSEFileManager, uint* pFileHash); //0
 
 in_game int Player_Delete(int* self); //0x80058278
 
+in_game void Sparx_SetHealthState(int* self); //0x800f6540
+in_game void Sparx_SetMode(int* self, Modes_Sparx mode, int force); //0x800eeff4
+in_game void Sparx_HandleAnims(int* self, int mode); //0x800f96c8
+
 in_game bool Spyro_TestBreathChange(int* self); //0x8008ae04
 
 in_game void PlayerState_SetHealth(int* self, int health); //0x800689c0

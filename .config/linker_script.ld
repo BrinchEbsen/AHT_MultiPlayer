@@ -54,6 +54,10 @@ MEMORY
     hookReImpl_HunterDeath : ORIGIN = 0x80047f4c, LENGTH = 0x100000
     hookReImpl_ByrdDeath : ORIGIN = 0x8007c440, LENGTH = 0x100000
     hookChangePlayer : ORIGIN = 0x8005bd04, LENGTH = 0x100000
+    patchHunterSwampDeath : ORIGIN = 0x8004f0d0, LENGTH = 0x100000
+    hookHunterDeathFall : ORIGIN = 0x80047a5c, LENGTH = 0x100000
+    hookSpyroDeathFall : ORIGIN = 0x8008a25c, LENGTH = 0x100000
+    patchSpyroSwampDeath : ORIGIN = 0x800a3490, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -538,6 +542,46 @@ SECTIONS
         hookChangePlayer.o(.data)
         hookChangePlayer.o(.bss)
     } > hookChangePlayer
+
+    /* Custom section for our hook code */
+    .patchHunterSwampDeath : 
+    {
+        patchHunterSwampDeath.o(.text)
+        patchHunterSwampDeath.o(.rodata)
+        patchHunterSwampDeath.o(.rodata*)
+        patchHunterSwampDeath.o(.data)
+        patchHunterSwampDeath.o(.bss)
+    } > patchHunterSwampDeath
+
+    /* Custom section for our hook code */
+    .hookHunterDeathFall : 
+    {
+        hookHunterDeathFall.o(.text)
+        hookHunterDeathFall.o(.rodata)
+        hookHunterDeathFall.o(.rodata*)
+        hookHunterDeathFall.o(.data)
+        hookHunterDeathFall.o(.bss)
+    } > hookHunterDeathFall
+
+    /* Custom section for our hook code */
+    .hookSpyroDeathFall : 
+    {
+        hookSpyroDeathFall.o(.text)
+        hookSpyroDeathFall.o(.rodata)
+        hookSpyroDeathFall.o(.rodata*)
+        hookSpyroDeathFall.o(.data)
+        hookSpyroDeathFall.o(.bss)
+    } > hookSpyroDeathFall
+
+    /* Custom section for our hook code */
+    .patchSpyroSwampDeath : 
+    {
+        patchSpyroSwampDeath.o(.text)
+        patchSpyroSwampDeath.o(.rodata)
+        patchSpyroSwampDeath.o(.rodata*)
+        patchSpyroSwampDeath.o(.data)
+        patchSpyroSwampDeath.o(.bss)
+    } > patchSpyroSwampDeath
 
     .MainCodecave : 
     {

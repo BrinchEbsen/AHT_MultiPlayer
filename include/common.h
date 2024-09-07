@@ -300,6 +300,23 @@ enum PlayerModes
 };
 typedef enum PlayerModes PlayerModes;
 
+enum Modes_Sparx {
+    spx_idle1 = 0x0,
+    spx_idle2 = 0x1,
+    spx_idle3 = 0x2,
+    spx_follow = 0x3,
+    spx_returning = 0x4,
+    spx_collectingGem = 0x5,
+    spx_chasingFodder = 0x6,
+    spx_hiding = 0x7,
+    spx_spyroIdle = 0x8,
+    spx_spyrochat = 0x9,
+    spx_pathfollow = 0xa,
+    spx_lockpick = 0xb,
+    spx_fullhealth = 0xc
+};
+typedef enum Modes_Sparx Modes_Sparx;
+
 enum PlayerAbilities
 {
     Abi_DoubleJump = 0x1,

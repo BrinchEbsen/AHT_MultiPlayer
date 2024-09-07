@@ -487,6 +487,36 @@ void updatePlayerList() {
     }
 }
 
+void reinitializeCamera(int* player) {
+    if (player == NULL) { return; }
+    int* cameraHandler = (int*) *(gpGameWnd + (0x378/4));
+
+    if (cameraHandler != NULL) {
+        int* vtable = (int*) *(cameraHandler + (0x4/4));
+        GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
+
+        EXRuntimeClass* class = getRTC();
+
+        //If it isn't a follower camera, set it to a new follower camera instance
+        if (class != 0x803bf64c) { //XSEItemHandler_Camera_Follow::classXItemHandler_Camera_Follow
+            int* playerItem = (int*) *player;
+            Players playerType = (Players) *(player + (0x578/4));
+
+            int* target = NULL;
+            if (cameraTargetItem == NULL) {
+                target = cameraTargetItem;
+            } else {
+                target = playerItem;
+            }
+
+            SetCamera(Follow, ForcePos, target, playerType, 0);
+        } else {
+            int* flags = cameraHandler + (0x39c/4);
+            *flags = 0; //If it is already a follower camera, just reset the flags
+        }
+    }
+}
+
 //Add new player and assign it to the given port number
 void addNewPlayer(int portNr) {
     //Only perform on players 2, 3 and 4
@@ -598,33 +628,12 @@ void removePlayer(int portNr, bool died) {
         globalRefPortNr = GetPortNrFromPlayerHandler(newHandler);
     }
 
-    int* cameraHandler = (int*) *(gpGameWnd + (0x378/4));
-
-    if ((cameraHandler != NULL) && (count != 0)) {
-        int* vtable = (int*) *(cameraHandler + (0x4/4));
-        GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
-
-        EXRuntimeClass* class = getRTC();
-
-        //If it isn't a follower camera, set it to a new follower camera instance
-        if (class != 0x803bf64c) { //XSEItemHandler_Camera_Follow::classXItemHandler_Camera_Follow
-            int* newPlayer = list[0];
-            int* newPlayerItem = (int*) *newPlayer;
-            Players playerType = (Players) *(newPlayer + (0x578/4));
-
-            int* target = NULL;
-            if (cameraTargetItem == NULL) {
-                target = cameraTargetItem;
-            } else {
-                target = newPlayerItem;
-            }
-
-            SetCamera(Follow, ForcePos, target, playerType, 0);
-        } else {
-            int* flags = cameraHandler + (0x39c/4);
-            *flags = 0; //If it is already a follower camera, just reset the flags
-        }
-    }
+    //reinitializeCamera(list[0]);
+    //if (gpSparx != NULL) {
+    //    Sparx_SetMode(gpSparx, spx_follow, 0);
+    //    Sparx_SetHealthState(gpSparx);
+    //    Sparx_HandleAnims(gpSparx, 0);
+    //}
 
     //Finally set some notification values
     playerJoinedNotifTimers[portNr] = 0;
@@ -903,6 +912,8 @@ void CameraFollowPostUpdate(int* self) {
     EXVector3 rangeLower = {0.0};
     EXVector3 rangeUpper = {0.0};
 
+    bool init = false;
+
     //Loop through all players and gather the ranges of their positions
     for (int i = 0; i < count; i++) {
         int* handler = list[i];
@@ -910,8 +921,19 @@ void CameraFollowPostUpdate(int* self) {
         int* playerItem = (int*)(*(handler));
         EXVector* playerPos = (EXVector*) (playerItem + (0xD0/4));
 
+        //Ignore if the player is in the deathfall mode (to avoid annoying camera angle).
+        //Don't ignore if we haven't initialized, otherwise we have no initial vectors for the focus.
+        if (init || (i != (count-1))) {
+            PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
+            if (mode == deathfall) {
+                continue;
+            }
+        }
+
         //Initialize the range vectors for the first player
-        if (i == 0) {
+        if (!init) {
+            init = true;
+
             rangeLower.x = playerPos->x;
             rangeLower.y = playerPos->y;
             rangeLower.z = playerPos->z;
@@ -1197,9 +1219,9 @@ void MainUpdate() {
                 playerLeaveTimers[i] = 0;
             }
 
-            if (checkZDoublePress(i)) {
-                teleportPlayersToPlayer(i);
-            }
+            //if (checkZDoublePress(i)) {
+            //    teleportPlayersToPlayer(i);
+            //}
 
             if (isButtonDown(Button_Dpad_Up, i)) {
                 playerRestoreTimers[i]++;
@@ -1227,6 +1249,9 @@ void DrawUpdate() {
             }
         }
     }
+
+    Modes_Sparx sparxMode = *(gpSparx + (0x4d0/4));
+    textPrintF(0, 0, Centre, &COLOR_WHITE, 1.0f, "%d", sparxMode);
 
     for (int i = 0; i < 4; i++) {
         bool alreadyShowing = false;
