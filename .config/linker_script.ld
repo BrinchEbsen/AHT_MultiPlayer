@@ -58,6 +58,7 @@ MEMORY
     hookHunterDeathFall : ORIGIN = 0x80047a5c, LENGTH = 0x100000
     hookSpyroDeathFall : ORIGIN = 0x8008a25c, LENGTH = 0x100000
     patchSpyroSwampDeath : ORIGIN = 0x800a3490, LENGTH = 0x100000
+    patchCallPlayerWndDraw : ORIGIN = 0x80131e28, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -582,6 +583,16 @@ SECTIONS
         patchSpyroSwampDeath.o(.data)
         patchSpyroSwampDeath.o(.bss)
     } > patchSpyroSwampDeath
+
+    /* Custom section for our hook code */
+    .patchCallPlayerWndDraw : 
+    {
+        patchCallPlayerWndDraw.o(.text)
+        patchCallPlayerWndDraw.o(.rodata)
+        patchCallPlayerWndDraw.o(.rodata*)
+        patchCallPlayerWndDraw.o(.data)
+        patchCallPlayerWndDraw.o(.bss)
+    } > patchCallPlayerWndDraw
 
     .MainCodecave : 
     {

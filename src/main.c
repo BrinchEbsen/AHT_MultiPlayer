@@ -630,9 +630,15 @@ void removePlayer(int portNr, bool died) {
 
     //reinitializeCamera(list[0]);
     //if (gpSparx != NULL) {
-    //    Sparx_SetMode(gpSparx, spx_follow, 0);
     //    Sparx_SetHealthState(gpSparx);
-    //    Sparx_HandleAnims(gpSparx, 0);
+    //    
+    //    int* spx_item = (int*) *gpSparx;
+    //    int* spx_anim = (int*) *(spx_item + (0x144/4));
+    //    int* spx_anim_itemflags = spx_anim + (0xc/4);
+    //    *spx_anim_itemflags &= ~1;
+    //
+    //    Sparx_SetMode(gpSparx, spx_follow, 0);
+    //    //Sparx_HandleAnims(gpSparx, 0);
     //}
 
     //Finally set some notification values
@@ -750,7 +756,7 @@ void updateCameraTargetItem() {
 //Apply hotswap values if players have joined.
 void PlayerHandlerPreUpdate(int* self) {
     gpPlayer = self;
-    gpPlayerItem = (int*)(*self);
+    gpPlayerItem = (int*) *self;
 
     int ID = *(self + 0x8/4);
 
@@ -894,7 +900,7 @@ void MiscHandlerPreUpdate(int* self) {
         if (closest != NULL) {
             g_PadNum = GetPortNrFromPlayerHandler(closest);
             gpPlayer = closest;
-            gpPlayerItem = (int*)(*closest);
+            gpPlayerItem = (int*) *closest;
             globalRefPortNr = g_PadNum;
         }
     }
@@ -1250,8 +1256,8 @@ void DrawUpdate() {
         }
     }
 
-    Modes_Sparx sparxMode = *(gpSparx + (0x4d0/4));
-    textPrintF(0, 0, Centre, &COLOR_WHITE, 1.0f, "%d", sparxMode);
+    //Modes_Sparx sparxMode = *(gpSparx + (0x4d0/4));
+    //textPrintF(0, 0, Centre, &COLOR_WHITE, 1.0f, "%d", sparxMode);
 
     for (int i = 0; i < 4; i++) {
         bool alreadyShowing = false;
