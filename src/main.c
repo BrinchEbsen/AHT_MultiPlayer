@@ -615,6 +615,8 @@ void removePlayer(int portNr, bool died) {
     if (handler == NULL) { return; }
 
     //let's now delete the thing
+    gpPlayer = handler; //global references are set first to avoid crashes
+    gpPlayerItem = (int*) *handler;
     ItemHandler_SEKill(handler);
     players[portNr] = -1;
 
