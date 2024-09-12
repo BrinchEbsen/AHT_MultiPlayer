@@ -630,7 +630,6 @@ void removePlayer(int portNr, bool died) {
         globalRefPortNr = GetPortNrFromPlayerHandler(newHandler);
     }
 
-    //reinitializeCamera(list[0]);
     //if (gpSparx != NULL) {
     //    Sparx_SetHealthState(gpSparx);
     //    
@@ -1216,6 +1215,9 @@ void MainUpdate() {
             if (isButtonPressed(Button_A, i) && (playerJoinCooldownTimers[i] == 0)) {
                 addNewPlayer(i);
             }
+            //Reset timers if player is missing
+            playerLeaveTimers[i] = 0;
+            playerRestoreTimers[i] = 0;
         } else { //Player slot taken
             if (isButtonDown(Button_Dpad_Right, i)) {
                 playerLeaveTimers[i]++;
@@ -1226,10 +1228,6 @@ void MainUpdate() {
             } else {
                 playerLeaveTimers[i] = 0;
             }
-
-            //if (checkZDoublePress(i)) {
-            //    teleportPlayersToPlayer(i);
-            //}
 
             if (isButtonDown(Button_Dpad_Up, i)) {
                 playerRestoreTimers[i]++;
