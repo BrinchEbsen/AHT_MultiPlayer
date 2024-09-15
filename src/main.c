@@ -497,6 +497,8 @@ bool modeIsDying(PlayerModes mode) {
             return true;
         case deathfall:
             return true;
+        case iceydeath:
+            return true;
     }
 
     return false;
