@@ -487,6 +487,21 @@ void updatePlayerList() {
     }
 }
 
+bool modeIsDying(PlayerModes mode) {
+    switch (mode) {
+        case death:
+            return true;
+        case swamp_death:
+            return true;
+        case water_death:
+            return true;
+        case deathfall:
+            return true;
+    }
+
+    return false;
+}
+
 void reinitializeCamera(int* player) {
     if (player == NULL) { return; }
     int* cameraHandler = (int*) *(gpGameWnd + (0x378/4));
@@ -928,11 +943,12 @@ void CameraFollowPostUpdate(int* self) {
         int* playerItem = (int*)(*(handler));
         EXVector* playerPos = (EXVector*) (playerItem + (0xD0/4));
 
-        //Ignore if the player is in the deathfall mode (to avoid annoying camera angle).
+        //Ignore if the player is dying (to avoid annoying camera angle).
         //Don't ignore if we haven't initialized, otherwise we have no initial vectors for the focus.
+        //Also don't ignore if we're at the end of the list, because no player afterwards will be able to initialize the vectors.
         if (init || (i != (count-1))) {
             PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
-            if (mode == deathfall) {
+            if (modeIsDying(mode)) {
                 continue;
             }
         }
@@ -1162,6 +1178,10 @@ void MainUpdate() {
 
     //If the gameloop isn't running, abort
     if ((SE_GameLoop_State != 3) || GameIsPaused()) {
+        for (int i = 0; i < 4; i++) {
+            playerLeaveTimers[i] = 0;
+            playerRestoreTimers[i] = 0;
+        }
         return;
     }
 
@@ -1247,7 +1267,7 @@ void MainUpdate() {
 //draw_hook.s | Runs every frame during the HUD draw loop
 //Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
-    //If player 1 isn't there or there's more than one player
+    //Draw markers for the players if player 1 isn't alone.
     if ((players[0] == -1) || (NumberOfPlayers() > 1)) {
         for (int i = 0; i < 4; i++) {
             if (players[i] != -1) {
@@ -1259,6 +1279,7 @@ void DrawUpdate() {
     //Modes_Sparx sparxMode = *(gpSparx + (0x4d0/4));
     //textPrintF(0, 0, Centre, &COLOR_WHITE, 1.0f, "%d", sparxMode);
 
+    //Draw player notifications
     for (int i = 0; i < 4; i++) {
         bool alreadyShowing = false;
 
@@ -1359,6 +1380,7 @@ void DrawUpdate() {
         playerNotifShowing[i] = alreadyShowing;
     }
 
+    //Draw restart game timer
     if (restartGameTimer > 20) {
         textPrint("Restarting...", 0, 10, 330, TopLeft, &COLOR_LIGHT_RED, 1.2);
 
@@ -1384,7 +1406,12 @@ void DrawUpdate() {
 
     for (int i = 0; i < 4; i++) {
         int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
-        textSmpPrintF(20, 120 + (i * 15), "%d: %x | %x", i+1, players[i], handler);
+        textSmpPrintF(20, 120 + (i * 30), "%d: %x | %x", i+1, players[i], handler);
+
+        if (handler != NULL) {
+            PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
+            textSmpPrintF(20, 120 + (i * 30) + 15, "mode: %d", mode);
+        }
     }
 
     if (cameraTargetItem != NULL) {
@@ -1393,7 +1420,7 @@ void DrawUpdate() {
         drawSquareAtVec(pos, 4, &COLOR_RED);
     }
 
-    textSmpPrintF(20, 195, "items: %d", ItemEnv_ItemCount);
+    textSmpPrintF(20, 240, "items: %d", ItemEnv_ItemCount);
 
     return;
 }

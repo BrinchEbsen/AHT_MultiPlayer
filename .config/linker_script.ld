@@ -62,6 +62,9 @@ MEMORY
     patchBlinkSwampDeath : ORIGIN = 0x8002e290, LENGTH = 0x100000
     patchSgtHandleFall1 : ORIGIN = 0x800819ac, LENGTH = 0x100000
     patchSgtHandleFall2 : ORIGIN = 0x80081a9c, LENGTH = 0x100000
+    patchSgtHandleCrashWater : ORIGIN = 0x800838f8, LENGTH = 0x100000
+    patchSgtHandleCrashLava : ORIGIN = 0x80083b04, LENGTH = 0x100000
+    hookSgtDeathFall : ORIGIN = 0x8007c07c, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -626,6 +629,36 @@ SECTIONS
         patchSgtHandleFall2.o(.data)
         patchSgtHandleFall2.o(.bss)
     } > patchSgtHandleFall2
+
+    /* Custom section for our hook code */
+    .patchSgtHandleCrashWater : 
+    {
+        patchSgtHandleCrashWater.o(.text)
+        patchSgtHandleCrashWater.o(.rodata)
+        patchSgtHandleCrashWater.o(.rodata*)
+        patchSgtHandleCrashWater.o(.data)
+        patchSgtHandleCrashWater.o(.bss)
+    } > patchSgtHandleCrashWater
+
+    /* Custom section for our hook code */
+    .patchSgtHandleCrashLava : 
+    {
+        patchSgtHandleCrashLava.o(.text)
+        patchSgtHandleCrashLava.o(.rodata)
+        patchSgtHandleCrashLava.o(.rodata*)
+        patchSgtHandleCrashLava.o(.data)
+        patchSgtHandleCrashLava.o(.bss)
+    } > patchSgtHandleCrashLava
+
+    /* Custom section for our hook code */
+    .hookSgtDeathFall : 
+    {
+        hookSgtDeathFall.o(.text)
+        hookSgtDeathFall.o(.rodata)
+        hookSgtDeathFall.o(.rodata*)
+        hookSgtDeathFall.o(.data)
+        hookSgtDeathFall.o(.bss)
+    } > hookSgtDeathFall
 
     .MainCodecave : 
     {
