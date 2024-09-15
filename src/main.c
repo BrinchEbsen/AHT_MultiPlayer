@@ -1239,7 +1239,14 @@ void MainUpdate() {
             playerLeaveTimers[i] = 0;
             playerRestoreTimers[i] = 0;
         } else { //Player slot taken
-            if (isButtonDown(Button_Dpad_Right, i)) {
+            int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[i], 0);
+            bool dying = false;
+            if (handler != NULL) {
+                PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
+                dying = modeIsDying(mode);
+            }
+
+            if (isButtonDown(Button_Dpad_Right, i) && !dying) {
                 playerLeaveTimers[i]++;
                 if (playerLeaveTimers[i] >= playerLeaveTimerMax) {
                     playerLeaveTimers[i] = 0;
@@ -1249,7 +1256,7 @@ void MainUpdate() {
                 playerLeaveTimers[i] = 0;
             }
 
-            if (isButtonDown(Button_Dpad_Up, i)) {
+            if (isButtonDown(Button_Dpad_Up, i) && !dying) {
                 playerRestoreTimers[i]++;
                 if (playerRestoreTimers[i] >= playerRestoreTimerMax) {
                     playerRestoreTimers[i] = 0;
