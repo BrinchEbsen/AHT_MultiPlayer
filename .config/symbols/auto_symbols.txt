@@ -84,6 +84,7 @@ Player_Delete = 0x80058278;
 Sparx_SetHealthState = 0x800f6540;
 Sparx_SetMode = 0x800eeff4;
 Sparx_HandleAnims = 0x800f96c8;
+Sparx_HandleHiding = 0x800f43c0;
 Spyro_TestBreathChange = 0x8008ae04;
 PlayerState_SetHealth = 0x800689c0;
 PlayerState_RestartGame = 0x800687ec;

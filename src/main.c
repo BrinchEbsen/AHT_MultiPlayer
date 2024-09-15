@@ -101,13 +101,13 @@ int LOCKEDCHEST_VTABLE = 0x80429b18;
 
 //Lookup tables for characters and their vtables
 
-#define CHARACTER_AMOUNT 8
+#define CHARACTER_AMOUNT 7
 Players CHARACTERS[] = {
     Player_Spyro,
     Player_Hunter,
     Player_Blinky,
     Player_SgtByrd,
-    Player_Sparx,
+    //Player_Sparx,
     Player_BallGadget,
     Player_Ember,
     Player_Flame
@@ -117,7 +117,7 @@ int CHARACTER_VTABLES[] = {
     0x80407338, //Hunter
     0x80406488, //Blink
     0x8040aea8, //Sgt. Byrd
-    0x80405e38, //Sparx
+    //0x80405e38, //Sparx
     0x80404ec0, //Ball Gadget
     0x804051d8, //Ember
     0x80405428  //Flame
@@ -650,13 +650,8 @@ void removePlayer(int portNr, bool died) {
     //if (gpSparx != NULL) {
     //    Sparx_SetHealthState(gpSparx);
     //    
-    //    int* spx_item = (int*) *gpSparx;
-    //    int* spx_anim = (int*) *(spx_item + (0x144/4));
-    //    int* spx_anim_itemflags = spx_anim + (0xc/4);
-    //    *spx_anim_itemflags &= ~1;
-    //
-    //    Sparx_SetMode(gpSparx, spx_follow, 0);
-    //    //Sparx_HandleAnims(gpSparx, 0);
+    //    Sparx_HandleHiding(gpSparx, 1);
+    //    Sparx_SetMode(gpSparx, spx_chasingFodder, 0);
     //}
 
     //Finally set some notification values
@@ -1285,6 +1280,33 @@ void DrawUpdate() {
         }
     }
 
+    //Show notif saying Sparx can't be played in multiplayer
+    if (NumberOfPlayers() == 0) {
+        bool showNoSparxNotif = false;
+        static int noSparxNotifTimer = 0;
+
+        if (gpPlayer != NULL) {
+            int vtable = *(gpPlayer + 0x4/4);
+            if (vtable == SPARX_PLAYER_VTABLE) {
+                for (int i = 1; i < 4; i++) {
+                    if (isButtonPressed(Button_A, i)) {
+                        showNoSparxNotif = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (showNoSparxNotif) {
+            noSparxNotifTimer = 60;
+        }
+        
+        if (noSparxNotifTimer > 0) {
+            textPrint("Sparx not available for multiplayer", 0, 0, 0, BottomCentre, &COLOR_LIGHT_RED, 1.0);
+            noSparxNotifTimer--;
+        }
+    }
+
     //Modes_Sparx sparxMode = *(gpSparx + (0x4d0/4));
     //textPrintF(0, 0, Centre, &COLOR_WHITE, 1.0f, "%d", sparxMode);
 
@@ -1469,7 +1491,12 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     } else if (vtable == SPARX_VTABLE) {
         SparxPreUpdate(self);
     } else if (vtable == LOCKEDCHEST_VTABLE) {
-        SetPlayerRefToPort(0);
+        for (int i = 0; i < 4; i++) {
+            if (players[i] == -1) { continue; }
+
+            SetPlayerRefToPort(i);
+            break;
+        }
     } else    
     {
         MiscHandlerPreUpdate(self);
