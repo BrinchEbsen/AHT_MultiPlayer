@@ -69,6 +69,7 @@ vtable_GUI_PanelItem_v_StateRunning = 0x80445d28;
 GUI_PanelItem_v_StateRunning = 0x8021eb3c;
 SE_GameLoop_State = 0x8046F344;
 Camera_Follow_Elevation_Default = 0x803bf66c;
+Camera_BallGadgetFollow_Distance_UpperLimit = 0x803bf070;
 ItemHandler_SEKill = 0x80242210;
 XSEItemEnv_RemoveXSEItemHandler = 0x80240a8c;
 SE_Trigger_DoKill = 0x8023a9d0;

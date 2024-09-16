@@ -164,6 +164,7 @@ typedef void (*SE_Map_SetMiniGameDie_func)(int*);
 
 in_game int SE_GameLoop_State; //0x8046F344
 in_game float Camera_Follow_Elevation_Default; //0x803bf66c
+in_game float Camera_BallGadgetFollow_Distance_UpperLimit; //0x803bf070
 
 in_game bool ItemHandler_SEKill(int* self); //0x80242210
 

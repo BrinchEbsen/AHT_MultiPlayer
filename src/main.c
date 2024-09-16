@@ -96,6 +96,7 @@ int FLAME_VTABLE = 0x80405428;
 
 int SPARX_VTABLE = 0x8040f8b0;
 int CAMERA_FOLLOW_VTABLE = 0x804161b0;
+int CAMERA_BALLGADGET_FOLLOW_VTABLE = 0x80415790;
 int BLINKYBULLET_VTABLE = 0x80408988;
 int LOCKEDCHEST_VTABLE = 0x80429b18;
 
@@ -490,13 +491,9 @@ void updatePlayerList() {
 bool modeIsDying(PlayerModes mode) {
     switch (mode) {
         case death:
-            return true;
         case swamp_death:
-            return true;
         case water_death:
-            return true;
         case deathfall:
-            return true;
         case iceydeath:
             return true;
     }
@@ -654,7 +651,7 @@ void removePlayer(int portNr, bool died) {
     //    Sparx_SetMode(gpSparx, spx_chasingFodder, 0);
     //}
 
-    //Finally set some notification values
+    //Finally, set some notification values
     playerJoinedNotifTimers[portNr] = 0;
     playerLeaveNotifTimers[portNr] = 60;
     leaveBecauseDeath[portNr] = died;
@@ -763,6 +760,94 @@ void updateCameraTargetItem() {
         XSEItemEnv_AddXSEItem(&theItemEnv, cameraTargetItem, 0);
         //ig_printf("Creating new item for camera focus\n");
     }
+}
+
+//Get the middle point between all players, as well as the biggest range between them.
+//Returns false if no players were found.
+//Tries ignoring any player in the dying state.
+bool GetPlayerPosMidAndRanges(EXVector3* middle, float* biggestRange) {
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count == 0) { return false; }
+
+    //Lower and upper ranges for positions the players take up
+    EXVector3 rangeLower = {0.0};
+    EXVector3 rangeUpper = {0.0};
+
+    bool init = false;
+
+    //Loop through all players and gather the ranges of their positions
+    for (int i = 0; i < count; i++) {
+        int* handler = list[i];
+
+        int* playerItem = (int*) *handler;
+        EXVector* playerPos = (EXVector*) (playerItem + (0xD0/4));
+
+        //Ignore if the player is dying (to avoid annoying camera angle).
+        //Don't ignore if we haven't initialized, otherwise we have no initial vectors for the focus.
+        //Also don't ignore if we're at the end of the list, because no player afterwards will be able to initialize the vectors.
+        if (init || (i != (count-1))) {
+            PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
+            if (modeIsDying(mode)) {
+                continue;
+            }
+        }
+
+        //Initialize the range vectors for the first player
+        if (!init) {
+            init = true;
+
+            rangeLower.x = playerPos->x;
+            rangeLower.y = playerPos->y;
+            rangeLower.z = playerPos->z;
+            rangeUpper.x = playerPos->x;
+            rangeUpper.y = playerPos->y;
+            rangeUpper.z = playerPos->z;
+            continue;
+        }
+
+        //Update ranges for the subsequent players
+        if (playerPos->x > rangeUpper.x) {
+            rangeUpper.x = playerPos->x;
+        } else if (playerPos->x < rangeLower.x) {
+            rangeLower.x = playerPos->x;
+        }
+        if (playerPos->y > rangeUpper.y) {
+            rangeUpper.y = playerPos->y;
+        } else if (playerPos->y < rangeLower.y) {
+            rangeLower.y = playerPos->y;
+        }
+        if (playerPos->z > rangeUpper.z) {
+            rangeUpper.z = playerPos->z;
+        } else if (playerPos->z < rangeLower.z) {
+            rangeLower.z = playerPos->z;
+        }
+    }
+
+    //Size of each range (if there's only one player, this will be the same as their position)
+    EXVector3 rangeSizes = {
+        .x = rangeUpper.x - rangeLower.x,
+        .y = rangeUpper.y - rangeLower.y,
+        .z = rangeUpper.z - rangeLower.z
+    };
+
+    //Middle point of the ranges
+    //middle = lower range + (range size / 2)
+    middle->x = rangeLower.x + (rangeSizes.x / 2.0);
+    middle->y = rangeLower.y + (rangeSizes.y / 2.0);
+    middle->z = rangeLower.z + (rangeSizes.z / 2.0);
+
+    //Biggest range of the 3 axis
+    *biggestRange = rangeSizes.x;
+    if (rangeSizes.y > *biggestRange) {
+        *biggestRange = rangeSizes.y;
+    }
+    if (rangeSizes.z > *biggestRange) {
+        *biggestRange = rangeSizes.z;
+    }
+
+    return true;
 }
 
 //Code that runs prior to a player's SEUpdate.
@@ -919,90 +1004,58 @@ void MiscHandlerPreUpdate(int* self) {
     }
 }
 
+void CameraBallGadgetFollowPostUpdate(int* self) {
+    EXVector3 middle = {0};
+    float biggestRange = 0;
+
+    if (!GetPlayerPosMidAndRanges(&middle, &biggestRange)) {
+        return;
+    }
+
+    float* camElevation = (float*) (self + (0x248/4));
+    float* camRange = (float*) (self + (0x24C/4));
+
+    //Make the camera zoom out the further apart the players get
+    float buffer = 10.0;
+    float factor = 1.1;
+    if (biggestRange > buffer) {
+        //Amount of additional distance compared to default
+        float distSize = (biggestRange-buffer);
+
+        //*camRange = (distSize * factor) + buffer;
+        Camera_BallGadgetFollow_Distance_UpperLimit = (distSize * factor) + buffer;
+        *camElevation = 1.19380522 - (distSize * 0.003);
+    } else {
+        Camera_BallGadgetFollow_Distance_UpperLimit = 10.0;
+        *camElevation = 1.19380522;
+    }
+
+    updateCameraTargetItem();
+    if (cameraTargetItem != NULL) {
+        int** targetItem = (int**) (self + (0x398/4));
+        *targetItem = cameraTargetItem;
+
+        EXVector* targetPos = (EXVector*) (cameraTargetItem + (0xD0/4));
+
+        //Set the target item's position to our middle vector
+        targetPos->x = middle.x;
+        targetPos->y = middle.y;
+        targetPos->z = middle.z;
+    }
+
+    //if (isButtonPressed(Button_Z, 0)) {
+    //    ig_printf("%.2f, %.2f\n", *camElevation, *camRange);
+    //}
+}
+
 //Code that runs after the follower camera's SEUpdate.
 //Manipulate camera variables to make them work with multiple players.
 void CameraFollowPostUpdate(int* self) {
-    int* list[4];
-    int count = GetArrayOfPlayerHandlers(&list);
+    EXVector3 middle = {0};
+    float biggestRange = 0;
 
-    if (count == 0) { return; }
-
-    //Lower and upper ranges for positions the players take up
-    EXVector3 rangeLower = {0.0};
-    EXVector3 rangeUpper = {0.0};
-
-    bool init = false;
-
-    //Loop through all players and gather the ranges of their positions
-    for (int i = 0; i < count; i++) {
-        int* handler = list[i];
-
-        int* playerItem = (int*)(*(handler));
-        EXVector* playerPos = (EXVector*) (playerItem + (0xD0/4));
-
-        //Ignore if the player is dying (to avoid annoying camera angle).
-        //Don't ignore if we haven't initialized, otherwise we have no initial vectors for the focus.
-        //Also don't ignore if we're at the end of the list, because no player afterwards will be able to initialize the vectors.
-        if (init || (i != (count-1))) {
-            PlayerModes mode = (PlayerModes) *(handler + (0x834/4));
-            if (modeIsDying(mode)) {
-                continue;
-            }
-        }
-
-        //Initialize the range vectors for the first player
-        if (!init) {
-            init = true;
-
-            rangeLower.x = playerPos->x;
-            rangeLower.y = playerPos->y;
-            rangeLower.z = playerPos->z;
-            rangeUpper.x = playerPos->x;
-            rangeUpper.y = playerPos->y;
-            rangeUpper.z = playerPos->z;
-            continue;
-        }
-
-        //Update ranges for the subsequent players
-        if (playerPos->x > rangeUpper.x) {
-            rangeUpper.x = playerPos->x;
-        } else if (playerPos->x < rangeLower.x) {
-            rangeLower.x = playerPos->x;
-        }
-        if (playerPos->y > rangeUpper.y) {
-            rangeUpper.y = playerPos->y;
-        } else if (playerPos->y < rangeLower.y) {
-            rangeLower.y = playerPos->y;
-        }
-        if (playerPos->z > rangeUpper.z) {
-            rangeUpper.z = playerPos->z;
-        } else if (playerPos->z < rangeLower.z) {
-            rangeLower.z = playerPos->z;
-        }
-    }
-
-    //Size of each range (if there's only one player, this will be the same as their position)
-    EXVector3 rangeSizes = {
-        .x = rangeUpper.x - rangeLower.x,
-        .y = rangeUpper.y - rangeLower.y,
-        .z = rangeUpper.z - rangeLower.z
-    };
-
-    //Middle point of the ranges
-    //middle = lower range + (range size / 2)
-    EXVector3 middle = {
-        .x = rangeLower.x + (rangeSizes.x / 2.0),
-        .y = rangeLower.y + (rangeSizes.y / 2.0),
-        .z = rangeLower.z + (rangeSizes.z / 2.0)
-    };
-
-    //Biggest range of the 3 axis
-    float biggestRange = rangeSizes.x;
-    if (rangeSizes.y > biggestRange) {
-        biggestRange = rangeSizes.y;
-    }
-    if (rangeSizes.z > biggestRange) {
-        biggestRange = rangeSizes.z;
+    if (!GetPlayerPosMidAndRanges(&middle, &biggestRange)) {
+        return;
     }
 
     float* camElevation = (float*) (self + (0x248/4));
@@ -1035,8 +1088,8 @@ void CameraFollowPostUpdate(int* self) {
         targetPos->z = middle.z;
     }
 
-    uint* collideFlags = (uint*) (self + (0x404/4));
-    *collideFlags |= 2;
+    //uint* collideFlags = (uint*) (self + (0x404/4));
+    //*collideFlags |= 2;
 }
 
 //Draw the player's name, health and powerup status
@@ -1453,6 +1506,10 @@ void DrawUpdate() {
 
     textSmpPrintF(20, 240, "items: %d", ItemEnv_ItemCount);
 
+    if (gpGameWnd != NULL) {
+        textSmpPrintF(20, 255, "cam: %x", (int*) *(gpGameWnd + (0x378/4)));
+    }
+
     return;
 }
 
@@ -1485,6 +1542,16 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
         bool res = ItemHandler_SEUpdate(self);
 
         CameraFollowPostUpdate(self);
+
+        g_PadNum = 0;
+        return res;
+    } else if (vtable == CAMERA_BALLGADGET_FOLLOW_VTABLE) {
+        //Make the player moving the stick the most control the camera
+        g_PadNum = whoShouldControlCamera();
+
+        bool res = ItemHandler_SEUpdate(self);
+
+        CameraBallGadgetFollowPostUpdate(self);
 
         g_PadNum = 0;
         return res;

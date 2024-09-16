@@ -65,6 +65,7 @@ MEMORY
     patchSgtHandleCrashWater : ORIGIN = 0x800838f8, LENGTH = 0x100000
     patchSgtHandleCrashLava : ORIGIN = 0x80083b04, LENGTH = 0x100000
     hookSgtDeathFall : ORIGIN = 0x8007c07c, LENGTH = 0x100000
+    patchCamBGCollisionUpdate : ORIGIN = 0x8010f248, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -659,6 +660,16 @@ SECTIONS
         hookSgtDeathFall.o(.data)
         hookSgtDeathFall.o(.bss)
     } > hookSgtDeathFall
+
+    /* Custom section for our hook code */
+    .patchCamBGCollisionUpdate : 
+    {
+        cam_BG_coll_update.o(.text)
+        cam_BG_coll_update.o(.rodata)
+        cam_BG_coll_update.o(.rodata*)
+        cam_BG_coll_update.o(.data)
+        cam_BG_coll_update.o(.bss)
+    } > patchCamBGCollisionUpdate
 
     .MainCodecave : 
     {
