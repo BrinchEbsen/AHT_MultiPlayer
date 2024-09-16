@@ -926,6 +926,15 @@ void PlayerHandlerPostUpdate(int* self) {
             break;
         }
     }
+
+    int* playerStateFlags = self + (0x580/4);
+
+    //if player state is dead
+    if (((*playerStateFlags & 2) != 0) && !handlerIsOnlyPlayerLeft(self)) {
+        int portNr = GetPortNrFromPlayerHandler(self);
+        removePlayer(portNr, true);
+        ig_printf("deleting ballgadget\n");
+    }
 }
 
 //Code that runs before Sparx updates.
@@ -1564,8 +1573,7 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
             SetPlayerRefToPort(i);
             break;
         }
-    } else    
-    {
+    } else {
         MiscHandlerPreUpdate(self);
     }
 
