@@ -263,6 +263,25 @@ bool checkZDoublePress(int padNr) {
     return false;
 }
 
+//Approximate luminance from RGB
+int XRGBA_Luminance(XRGBA* col) {
+    int r = col->r;
+    int g = col->g;
+    int b = col->b;
+
+    return (r+r+r+b+g+g+g+g)>>3;
+}
+
+//Balance RGB values to match given luminance
+void XRGBA_Balance(XRGBA* col, int bal) {
+    int lum = XRGBA_Luminance(col);
+    float ratio = (float)bal/(float)lum;
+
+    col->r = (int)(col->r * ratio);
+    col->g = (int)(col->g * ratio);
+    col->b = (int)(col->b * ratio);
+}
+
 //Distance between two EXVectors
 float EXVector_Dist(EXVector* v1, EXVector* v2) {
     EXVector3 mag = {
@@ -2316,6 +2335,9 @@ void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
             if (pad3X < 0.0) {
                 sectorCol.r += (int)((-pad3X) * (float)0x40);
                 sectorCol.b += (int)((-pad3X) * (float)0x40);
+            } else {
+                sectorCol.r += (int)((pad3X) * (float)0x40);
+                sectorCol.b += (int)((pad3X) * (float)0x40);
             }
             
             if (pad3Y > 0.0) {
@@ -2323,9 +2345,11 @@ void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
             } else {
                 sectorCol.b += (int)((-pad3Y) * (float)0x40);
             }
+
+            XRGBA_Balance(&sectorCol, 0x20);
         }
         
-        XRGBA fadeCol   = {0, 0, 0, cAlpha};
+        XRGBA fadeCol = {0, 0, 0, cAlpha};
 
         //Set the centerpoint according to player 1 input
         centerPoint.x += (int)(Pads_Analog[0].LStick_X * lifeCycle * 20.0);
