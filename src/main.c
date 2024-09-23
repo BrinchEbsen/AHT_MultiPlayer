@@ -13,10 +13,22 @@ struct RayVecs {
 };
 typedef struct RayVecs RayVecs;
 
+enum DeathMode {
+    ReloadGame,
+    PlayerDespawn,
+    DEATHMODE_AMOUNT
+};
+typedef enum DeathMode DeathMode;
+
+DeathMode deathMode = PlayerDespawn;
+
 //Vtable hook stuff
 
 int GUI_PanelItem_v_StateRunning_Hook(int* self);
 GUI_PanelItem_v_StateRunning_func GUI_PanelItem_v_StateRunning_hookFunc = GUI_PanelItem_v_StateRunning_Hook;
+
+int GUI_PauseMenu_v_DrawStateRunning_Hook(int* self, int* pWnd);
+GUI_PauseMenu_v_DrawStateRunning_func GUI_PauseMenu_v_DrawStateRunning_hookFunc = GUI_PauseMenu_v_DrawStateRunning_Hook;
 
 //Empty color
 XRGBA COLOR_BLANK = {0, 0, 0, 0};
@@ -97,8 +109,10 @@ int FLAME_VTABLE = 0x80405428;
 int SPARX_VTABLE = 0x8040f8b0;
 int CAMERA_FOLLOW_VTABLE = 0x804161b0;
 int CAMERA_BALLGADGET_FOLLOW_VTABLE = 0x80415790;
+int CAMERA_BOSS_VTABLE = 0x80415650;
 int BLINKYBULLET_VTABLE = 0x80408988;
 int LOCKEDCHEST_VTABLE = 0x80429b18;
+int BOSS_VTABLE = 0x80407148;
 
 //Lookup tables for characters and their vtables
 
@@ -130,6 +144,8 @@ bool initialized = false;
 bool showDebug = false;
 //How many frames the "show debug button" has been held
 int showDebugTimer = 0;
+
+bool doMultiplayerOptions = false;
 
 //Whether a notification is being shown for the given player
 bool playerNotifShowing[] = {
@@ -193,7 +209,8 @@ int playerLeaveNotifTimers[] = {0, 0, 0, 0};
 //How many frames left for each player until they can join
 int playerJoinCooldownTimers[] = {0, 0, 0, 0};
 //The value the cooldown timers are set to when a player dies
-int playerJoinCooldownTimerMax = 60 * 10; //20 seconds
+#define PLAYER_JOIN_COOLDOWN_MAX_DEFAULT 60 * 10 //20 seconds
+int playerJoinCooldownTimerMax = PLAYER_JOIN_COOLDOWN_MAX_DEFAULT;
 
 bool showCoolDownTimer = false;
 
@@ -262,6 +279,28 @@ void EXVector_Copy(EXVector* dest, EXVector* src) {
     dest->y = src->y;
     dest->z = src->z;
     dest->w = src->w;
+}
+
+//Get the runtime class from the given handler
+EXRuntimeClass* GetHandlerRuntimeClass(int* handler) {
+    int* vtable = (int*) *(handler + (0x4/4));
+    GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
+    return getRTC();
+}
+
+//Check if the given handler is an instance of or inherits from the given runtime class
+bool HandlerIsOrInheritsFrom(int* handler, EXRuntimeClass* class) {
+    EXRuntimeClass* myClass = GetHandlerRuntimeClass(handler);
+
+    while (class != NULL) {
+        if (myClass == class) {
+            return true;
+        }
+
+        class = class->pBaseClass;
+    }
+
+    return false;
 }
 
 //Get the flag for the gameloop being paused
@@ -430,6 +469,35 @@ int GetArrayOfPlayerHandlers(int** list) {
 
     //Size of list
     return listindex;
+}
+
+int* GetFirstPlayerNotZeroHP() {
+    int portNr = 0;
+
+    for (int i = 0; i < 4; i++) {
+        if (players[i] != -1) {
+            portNr = i;
+        } else {
+            continue;
+        }
+
+        bool upgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
+        int health = PLAYER_HEALTH[i];
+
+        bool death = false;
+        if (upgrade) {
+            death = health <= 0x0;
+        } else {
+            death = health <= 0x20;
+        }
+
+        if (!death) {
+            portNr = i;
+            break;
+        }
+    }
+
+    return ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
 }
 
 //Reset all player references and search the item list to populate it again.
@@ -927,13 +995,16 @@ void PlayerHandlerPostUpdate(int* self) {
         }
     }
 
-    int* playerStateFlags = self + (0x580/4);
+    //check if vtable is ball gadget
+    if ((*(self + 0x4/4) == BALLGADGET_VTABLE)) {
+        int* playerStateFlags = self + (0x580/4);
 
-    //if player state is dead
-    if (((*playerStateFlags & 2) != 0) && !handlerIsOnlyPlayerLeft(self)) {
-        int portNr = GetPortNrFromPlayerHandler(self);
-        removePlayer(portNr, true);
-        ig_printf("deleting ballgadget\n");
+        //Non-final player is dead and death mode is PlayerDespawn
+        if (((*playerStateFlags & 2) != 0) && !handlerIsOnlyPlayerLeft(self) && (deathMode == PlayerDespawn)) {
+            int portNr = GetPortNrFromPlayerHandler(self);
+            removePlayer(portNr, true);
+            //ig_printf("deleting ballgadget\n");
+        }
     }
 }
 
@@ -1096,9 +1167,41 @@ void CameraFollowPostUpdate(int* self) {
         targetPos->y = middle.y;
         targetPos->z = middle.z;
     }
+}
 
-    //uint* collideFlags = (uint*) (self + (0x404/4));
-    //*collideFlags |= 2;
+void CameraBossPostUpdate(int* self) {
+    EXVector3 middle = {0};
+    float biggestRange = 0;
+
+    if (!GetPlayerPosMidAndRanges(&middle, &biggestRange)) {
+        return;
+    }
+
+    float* camRange = (float*) (self + (0x410/4));
+
+    //Make the camera zoom out the further apart the players get
+    float buffer = 8.0;
+    float factor = 1.2;
+    if (biggestRange > buffer) {
+        //Amount of additional distance compared to default
+        float distSize = (biggestRange-buffer);
+
+        *camRange = (distSize * factor) + buffer;
+    }
+
+    //Set the camera's target item to our custom one
+    updateCameraTargetItem();
+    if (cameraTargetItem != NULL) {
+        //int** targetItem = (int**) (self + (0x398/4));
+        //*targetItem = cameraTargetItem;
+
+        EXVector* targetPos = (EXVector*) (cameraTargetItem + (0xD0/4));
+
+        //Set the target item's position to our middle vector
+        targetPos->x = middle.x;
+        targetPos->y = middle.y;
+        targetPos->z = middle.z;
+    }
 }
 
 //Draw the player's name, health and powerup status
@@ -1230,10 +1333,102 @@ void DrawPlayerMarker(int portNr) {
     }
 }
 
+void DrawMultiplayerMenu() {
+    static int xOff = 260;
+    static int yOff = 120;
+    int textOff = 0;
+    
+    EXRect rect = {
+        .x = xOff - 5,
+        .y = yOff - 5,
+        .w = FRAME_SIZE_X - xOff,
+        .h = 200
+    };
+
+    XRGBA col = {
+        .r = 0,
+        .g = 0,
+        .b = 0,
+        .a = 0x40 
+    };
+
+    Util_DrawRect(gpPanelWnd, &rect, &col);
+
+    textPrint("Multiplayer Options", 0, xOff, yOff, TopLeft, &COLOR_WHITE, 1.3);
+    textOff += 30;
+
+    char* deathModeStr;
+
+    switch (deathMode) {
+        case ReloadGame:
+            deathModeStr = "Reload Game";
+            break;
+        case PlayerDespawn:
+            deathModeStr = "Despawn Player";
+            break;
+        default:
+            deathModeStr = "N/A";
+            break;
+    }
+
+    textPrint("(Dpad Left/Right: Change)", 0, xOff, yOff + textOff, TopLeft, &COLOR_LIGHT_BLUE, 1.0);
+    textOff += 20;
+    textPrintF(xOff, yOff + textOff, TopLeft, &COLOR_WHITE, 1.0, "Death Mode: %s", deathModeStr);
+    textOff += 40;
+
+    if (deathMode == PlayerDespawn) {
+        textPrint("(L/R: Change)\n(X: Faster)\n(Y: Default)", 0, xOff, yOff + textOff, TopLeft, &COLOR_LIGHT_BLUE, 1.0);
+        textOff += 60;
+        textPrintF(xOff, yOff + textOff, TopLeft, &COLOR_WHITE, 1.0, "Player Respawn Cooldown:\n%.1f Seconds", (float)playerJoinCooldownTimerMax/60.0);
+    }
+}
+
+void HandleMultiplayerMenu() {
+    if (isButtonPressed(Button_Dpad_Left, 0)) {
+        deathMode--;
+        if ((int)deathMode < 0) {
+            deathMode = DEATHMODE_AMOUNT-1;
+        }
+        PlaySFX(HT_Sound_SFX_GEN_HUD_SELECT);
+    } else if (isButtonPressed(Button_Dpad_Right, 0)) {
+        deathMode++;
+        if (deathMode >= DEATHMODE_AMOUNT) {
+            deathMode = 0;
+        }
+        PlaySFX(HT_Sound_SFX_GEN_HUD_SELECT);
+    }
+
+    if (deathMode == PlayerDespawn) {
+        int speed = isButtonDown(Button_X, 0) ? 10 : 3;
+
+        if (isButtonDown(Button_R, 0)) {
+            playerJoinCooldownTimerMax += speed;
+            if (playerJoinCooldownTimerMax > 60*9999) { //Upper limit: 9999 seconds
+                playerJoinCooldownTimerMax = 60*9999;
+            }
+        } else if (isButtonDown(Button_L, 0)) {
+            playerJoinCooldownTimerMax -= speed;
+            if (playerJoinCooldownTimerMax < 0) { //Lower limit: 0 seconds
+                playerJoinCooldownTimerMax = 0;
+            }
+        } else {
+            //Round to nearest 10th of a second when no button is pressed
+            playerJoinCooldownTimerMax -= playerJoinCooldownTimerMax % 6;
+        }
+
+        if (isButtonPressed(Button_Y, 0)) {
+            playerJoinCooldownTimerMax = PLAYER_JOIN_COOLDOWN_MAX_DEFAULT;
+        }
+    }
+
+    DrawMultiplayerMenu();
+}
+
 //main_hook.s | Runs every frame
 void MainUpdate() {
     //Setup vtable hooks
     vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_hookFunc;
+    vtable_GUI_PauseMenu_v_DrawStateRunning = GUI_PauseMenu_v_DrawStateRunning_hookFunc;
 
     //If the gameloop isn't running, abort
     if ((SE_GameLoop_State != 3) || GameIsPaused()) {
@@ -1289,6 +1484,16 @@ void MainUpdate() {
     }
 
     //PRE: There is at least one player alive, and we're ready for them to leave or others to join
+
+    if (OnlyPlayer1Exists()) {
+        PLAYER_HEALTH[0]              = gPlayerState.Health;
+        PLAYER_BREATHS[0]             = gPlayerState.CurrentBreath;
+        PLAYER_INVINCIBILITY[0]       = (gPlayerState.AbilityFlags & Abi_Invincibility) != 0;
+        PLAYER_INVINCIBILITY_TIMER[0] = gPlayerState.InvincibleTimer;
+        PLAYER_SUPERCHARGE[0]         = (gPlayerState.AbilityFlags & Abi_SuperCharge) != 0;
+        PLAYER_SUPERCHARGE_TIMER[0]   = gPlayerState.SuperchargeTimer;
+    }
+
     for (int i = 0; i < 4; i++) {
         if (players[i] == -1) { //Player slot not taken
             if (isButtonPressed(Button_A, i) && (playerJoinCooldownTimers[i] == 0)) {
@@ -1491,6 +1696,12 @@ void DrawUpdate() {
         Util_DrawRect(gpPanelWnd, &r, &COLOR_RED);
     }
 
+    if (doMultiplayerOptions) {
+        doMultiplayerOptions = false;
+
+        HandleMultiplayerMenu();
+    }
+
     //DEBUG BELOW:
     
     if (!showDebug) { return; }
@@ -1520,6 +1731,17 @@ void DrawUpdate() {
     }
 
     return;
+}
+
+int GUI_PauseMenu_v_DrawStateRunning_Hook(int* self, int* pWnd) {
+    float* xPosition = (float*) (self + (0xCC/4));
+    *xPosition-= 15.0;
+    if (*xPosition < 370.0) {
+        *xPosition = 370.0;
+        doMultiplayerOptions = true;
+    }
+
+    return GUI_PauseMenu_v_DrawStateRunning(self, pWnd);
 }
 
 //scan_hook.s | On the frame this function returns true, scanmode will be enabled/disabled.
@@ -1564,6 +1786,28 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
 
         g_PadNum = 0;
         return res;
+    } else if (vtable == CAMERA_BOSS_VTABLE) {
+        g_PadNum = whoShouldControlCamera();
+
+        updateCameraTargetItem();
+        if (cameraTargetItem != NULL) {
+            gpPlayerItem = cameraTargetItem;
+        }
+
+        bool res = ItemHandler_SEUpdate(self);
+
+        CameraBossPostUpdate(self);
+
+        int* list[4];
+        int count = GetArrayOfPlayerHandlers(&list);
+        if (count != 0) {
+            gpPlayerItem = (int*) *(list[0]);
+        } else {
+            gpPlayerItem = NULL;
+        }
+
+        g_PadNum = 0;
+        return res;
     } else if (vtable == SPARX_VTABLE) {
         SparxPreUpdate(self);
     } else if (vtable == LOCKEDCHEST_VTABLE) {
@@ -1573,6 +1817,9 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
             SetPlayerRefToPort(i);
             break;
         }
+    } else if (vtable == BOSS_VTABLE) {
+        //gpPlayer = GetFirstPlayerNotZeroHP();
+        //gpPlayerItem = (int*) *gpPlayer;
     } else {
         MiscHandlerPreUpdate(self);
     }
@@ -1679,6 +1926,7 @@ void SetAllHealthFull() {
 //Returns whether or not a map inherets from or is an instance of SEMap_MiniGame
 bool MapIsMinigame(int* map) {
     if (map == NULL) { return false; }
+
     int* vtable = (int*) *(map + (0x74/4));
     GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
 
@@ -1693,7 +1941,7 @@ bool MapIsMinigame(int* map) {
 
 //Replaces function at 0x800a31b0 and 0x80047f4c (both Spyro and Hunter die the same way)
 void ReImpl_SpyroHunter_urghhhImDead(int* self) {
-    if (handlerIsOnlyPlayerLeft(self)) {
+    if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         PlayerState_SetHealth(&gPlayerState, 0xA0);
         PlayerState_RestartGame(&gPlayerState);
     } else {
@@ -1710,7 +1958,7 @@ void ReImpl_SpyroHunter_urghhhImDead(int* self) {
 
 //Replaces function at 0x80020ebc
 void ReImpl_Blink_urghhhImDead(int* self) {
-    if (handlerIsOnlyPlayerLeft(self)) {
+    if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
 
         if (MapIsMinigame(map)) {
@@ -1745,7 +1993,7 @@ void ReImpl_Blink_urghhhImDead(int* self) {
 
 //Replaces function at 0x8007c440
 void ReImpl_SgtByrd_urghhhImDead(int* self) {
-    if (handlerIsOnlyPlayerLeft(self)) {
+    if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
 
         if (MapIsMinigame(map)) {

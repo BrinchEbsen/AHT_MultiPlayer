@@ -149,6 +149,12 @@ typedef int (*GUI_PanelItem_v_StateRunning_func)(int*);
 in_game GUI_PanelItem_v_StateRunning_func vtable_GUI_PanelItem_v_StateRunning; //0x80445d28
 in_game int GUI_PanelItem_v_StateRunning(int* self); //0x8021eb3c
 
+//The v_DrawStateRunning method on the GUI_PauseMenu class.
+typedef int (*GUI_PauseMenu_v_DrawStateRunning_func)(int*, int*);
+//v_DrawStateRunning vtable entry for GUI_PauseMenu
+in_game GUI_PauseMenu_v_DrawStateRunning_func vtable_GUI_PauseMenu_v_DrawStateRunning; //0x8042d968
+in_game int GUI_PauseMenu_v_DrawStateRunning(int* self, int* pWnd); //0x8039874c
+
 //The Delete method on the XSEItemHandler class.
 //NOTE: The player subclass implementations also set the global references to NULL!
 typedef int (*ItemHandler_Delete)(int*);

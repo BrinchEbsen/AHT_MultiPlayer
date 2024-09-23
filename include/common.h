@@ -159,6 +159,22 @@ enum MiniGameID
 };
 typedef enum MiniGameID MiniGameID;
 
+enum PStateFlags
+{
+    ps_none = 0x0,
+    ps_willdie = 0x1,
+    ps_dead = 0x2,
+    ps_willwin = 0x4,
+    ps_forceOff = 0x8,
+    ps_Blocking = 0x10,
+    ps_MiniGame = 0x20,
+    ps_Shopping = 0x40,
+    ps_NoObjectCollision = 0x80,
+    ps_NoMoreHits = 0x100,
+    ps_Locked = 0x200
+};
+typedef enum PStateFlags PStateFlags;
+
 enum CamTypes
 {
     Base             = 0,
