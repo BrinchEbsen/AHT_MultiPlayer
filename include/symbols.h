@@ -29,7 +29,7 @@ in_game int* gGameText; //0x80455c1c
 //Game counter (doesn't count during pause)
 in_game int gGameCounter; //0x804cb64c
 //Rand class (only 1 field)
-in_game uint* g_EXRandClass; //0x804cc854
+in_game uint g_EXRandClass; //0x804cc854
 //Current pad in use (0 to 3)
 in_game int g_PadNum; //0x804cb660
 //Player state class (health, gems etc...)
@@ -111,12 +111,16 @@ in_game void XWnd_SetText(int* _gpPanelWnd, long File, long Font, XRGBA* Col, fl
 in_game void XWnd_FontPrint (int* _gpPanelWnd, u16 x, u16 y, char* pText,   float Scale, TextAlign Align, bool Filter); //0x80134a34
 //Draw text to the screen (16bit string).
 in_game void XWnd_FontPrintW(int* _gpPanelWnd, u16 x, u16 y, wchar_t* pText, float Scale, TextAlign Align, bool Filter); //0x801335fc
+//Draw text to the screen (hashcode).
+in_game void XWnd_TextPrint(int* self, uint hash); //0x8012f6e0
 
 //Get screen coordinates from a world position
 in_game EXVector2* WorldToDisp(EXVector2* dest, EXVector* vct); //0x802807a8
 
 //Draw a rectangle to the screen.
 in_game void Util_DrawRect(int* _gpPanelWnd, EXRect *Rect, XRGBA *Col); //0x801aacc4
+in_game void Util_DrawSector(EXPoint* point, float innerRadius, float outerRadius, float startAng, float endAng, XRGBA* c1, XRGBA* c2, XRGBA* c3, XRGBA* c4, float resolution, int* pWnd); //0x802513bc
+in_game int* Util_GetGameInfoTexture(uint Hash); //0x802506b4
 
 //Get reference to the map the player is in. FindFlag is usually left as 0.
 in_game int* GetSpyroMap(long FindFlag); //0x80232df0
@@ -138,6 +142,9 @@ in_game uint Rand32(uint* _g_EXRandClass); //0x802f50a8
 in_game float Randf(uint* _g_EXRandClass); //0x802f50e0
 in_game void RandSetSeed(uint* _g_EXRandClass, uint set); //0x802f5088
 
+in_game void EXRect_Copy(EXRect* self, EXRect* other); //0x803881c0
+in_game void EXPoint_Copy(EXPoint* self, EXPoint* other); //0x803881a8
+
 //The v_PlayerSetup method on the SE_Map class.
 //Can be overridden for whatever specific setups a map might have.
 typedef EXVector* (*SE_Map_v_PlayerSetup)(int*, EXVector*, EXVector*);
@@ -154,6 +161,9 @@ typedef int (*GUI_PauseMenu_v_DrawStateRunning_func)(int*, int*);
 //v_DrawStateRunning vtable entry for GUI_PauseMenu
 in_game GUI_PauseMenu_v_DrawStateRunning_func vtable_GUI_PauseMenu_v_DrawStateRunning; //0x8042d968
 in_game int GUI_PauseMenu_v_DrawStateRunning(int* self, int* pWnd); //0x8039874c
+
+typedef void (*LoadingLoopDraw_func)(int*, int*);
+in_game LoadingLoopDraw_func vtable_LoadingLoopDraw; //0x80446370
 
 //The Delete method on the XSEItemHandler class.
 //NOTE: The player subclass implementations also set the global references to NULL!
@@ -224,5 +234,10 @@ in_game void ItemHandler_ChangeAnimSkin(int* self, int* animator, uint skinHash)
 in_game int* ItemEnv_FindUniqueIDHandler(int* self, uint handlerID, int index); //0x80240c48
 
 in_game bool SetCamera(CamTypes type, CamCreateMode mode, int* target, Players targetType, uint SetupFlags); //0x8012a104
+
+in_game int* BaseDisplay_m_pDisplay; //0x804cba84
+in_game void SE_Loop_ChildListDraw(int* self, int* pWnd); //0x80230098
+in_game void XSprite2D_Draw(XSprite2D* self, int* pWnd); //0x80130db4
+in_game void EXWnd_SelectSprite2DTexture(int* self, int* pTexture, bool Filter, bool Wrap); //0x8031ceb0
 
 #endif //SYMBOLS_H

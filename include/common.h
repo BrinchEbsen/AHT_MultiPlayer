@@ -63,6 +63,13 @@ struct EXRectf
 };
 typedef struct EXRectf EXRectf;
 
+struct EXPoint
+{
+    int x;
+    int y;
+};
+typedef struct EXPoint EXPoint;
+
 struct XRGBA
 {
     uchar r;
@@ -71,6 +78,20 @@ struct XRGBA
     uchar a;
 };
 typedef struct XRGBA XRGBA;
+
+struct XSprite2D
+{
+    XRGBA Col;
+    short x;
+    short y;
+    ushort w;
+    ushort h;
+    float u1;
+    float v1;
+    float u2;
+    float v2;
+};
+typedef struct XSprite2D XSprite2D;
 
 struct EXDListItem
 {
