@@ -66,6 +66,7 @@ MEMORY
     patchSgtHandleCrashLava : ORIGIN = 0x80083b04, LENGTH = 0x100000
     hookSgtDeathFall : ORIGIN = 0x8007c07c, LENGTH = 0x100000
     patchCamBGCollisionUpdate : ORIGIN = 0x8010f248, LENGTH = 0x100000
+    patchDisableGnastyVictory : ORIGIN = 0x80033b4c, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -670,6 +671,16 @@ SECTIONS
         cam_BG_coll_update.o(.data)
         cam_BG_coll_update.o(.bss)
     } > patchCamBGCollisionUpdate
+
+    /* Custom section for our hook code */
+    .patchDisableGnastyVictory : 
+    {
+        patchDisableGnastyVictory.o(.text)
+        patchDisableGnastyVictory.o(.rodata)
+        patchDisableGnastyVictory.o(.rodata*)
+        patchDisableGnastyVictory.o(.data)
+        patchDisableGnastyVictory.o(.bss)
+    } > patchDisableGnastyVictory
 
     .MainCodecave : 
     {

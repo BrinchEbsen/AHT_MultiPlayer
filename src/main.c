@@ -7,6 +7,8 @@
 #include <symbols.h>
 #include <screenmath.h>
 
+#define PI 3.14159265359
+
 //Temporary raycast memory
 struct RayVecs {
     EXVector vecs[3];
@@ -2234,7 +2236,7 @@ void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
 
     /*
      * Draw sectors.
-     * Hard-coded to draw 30 at all times.
+     * Hard-coded to draw 30 at all times. 
      */
     for (int i = 0; i < 30; i++) {
         /*
@@ -2260,11 +2262,12 @@ void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
 
         float radius2 = 400.0 / n2; //Radius dividing the two sectors
         float radius3 = radius2 + (n1 / n2); //Outer radius
+        //Change the outer ring thickness based on player 4 input
         radius3 += (Pads_Analog[3].LStick_Y + 0.5) * 30.0;
         float radius1 = radius2 - (n1 * (1.0/8.0)); //Inner radius
 
         //Calculate start angle
-        n1 = Randf(&g_EXRandClass) * 6.2831855; //Range: 0 to 2*PI
+        n1 = Randf(&g_EXRandClass) * 2*PI; //Range: 0 to 2*PI
         n2 = Randf(&g_EXRandClass); //Range: 0 to 1
         float startAng = timeLine * (n2 * 20.0 - 10.0) + n1;
 
@@ -2304,22 +2307,27 @@ void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
 
         XRGBA sectorCol = {0, 0x40, 0, cAlpha};
 
+        //Change color based on what player 3 input
         float pad3X = Pads_Analog[2].LStick_X;
         float pad3Y = Pads_Analog[2].LStick_Y;
         if ((pad3X != 0.0) || (pad3Y != 0.0)) {
             sectorCol.g = (int)(pad3X * (float)0x40) + 0x40;
+
+            if (pad3X < 0.0) {
+                sectorCol.r += (int)((-pad3X) * (float)0x40);
+                sectorCol.b += (int)((-pad3X) * (float)0x40);
+            }
+            
             if (pad3Y > 0.0) {
-                sectorCol.r = (int)(pad3Y * (float)0x40) + 0x40;
-                sectorCol.b = 0x40;
+                sectorCol.r += (int)(pad3Y * (float)0x40);
             } else {
-                sectorCol.b = (int)((-pad3Y) * (float)0x40) + 0x40;
-                sectorCol.r = 0x40;
+                sectorCol.b += (int)((-pad3Y) * (float)0x40);
             }
         }
         
         XRGBA fadeCol   = {0, 0, 0, cAlpha};
 
-        //Set the centerpoint according to the player input
+        //Set the centerpoint according to player 1 input
         centerPoint.x += (int)(Pads_Analog[0].LStick_X * lifeCycle * 20.0);
         centerPoint.y += (int)(Pads_Analog[0].LStick_Y * lifeCycle * 20.0);
 
