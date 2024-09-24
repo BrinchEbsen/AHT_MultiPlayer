@@ -13,7 +13,29 @@ This mod is currently limited specifically to the NTSC GameCube version (G5SE7D)
 | Xbox     | ❌    | ❌     |
 
 ## Installation
-Coming soon!
+<i>Patches are not available yet, sorry!</i>
+
+A few methods of installation are provided, all of which use [xdelta](https://www.romhacking.net/utilities/598/) for patching the game.<br>
+<i>If using Netplay, make sure all players have the same version of the mod installed before playing, or desyncs can occour!</i><br>
+<i>If Dolphin is preventing you from booting starting Netplay or there are frequent desyncs, it might be a good idea to have all players use the same patching method.</i>
+
+### ISO Patch
+
+This patching method is the easiest and might be possible if you have a .iso file of the NTSC GameCube version of the game that Dolphin classifies as a "Good dump" (right click on game->Properties->Verify).
+
+Use `iso_patch.xdelta` to patch the .iso file. If the process fails, your file likely doesn't exactly match the version I used to mod the game, and another method must be used. If you're applying any mods to the game's assets, do so <i>after</i> patching.
+
+### Executable Patch (GCRebuilder)
+
+The tool [GCRebuilder](https://gamebanana.com/tools/6410) can be used to extract and then overwrite the executable after patching, creating a new ISO. <i>Note that this will overwrite the .iso file, so make sure you back up the unmodded .iso beforehand!</i>
+
+Open the .iso in GCRebuilder with image->open, in the "Structure" panel navigate to `&&SystemData` and export `Start.dol`. Apply the patch `startdol_patch.xdelta` to the file. In GCRebuilder, navigate to `Start.dol` again and import the newly patched file overtop of it.
+
+### Executable Patch (Unpack and play from folder)
+
+If this method is used over Netplay, it must be used by all players. Right click on the game in Dolphin, go to Properties, go to the Filesystem tab, right click on the disc and select "Extract Entire Disc". Apply the patch `maindol_patch.xdelta` to the file `sys\main.dol`, and replace that file with the newly patched version.
+
+To play the game, either drag `main.dol` into Dolphin's window, or add the unpacked folder to Dolphin's paths.
 
 ## Usage
 Any time the game boots up or reloads, only player 1 spawns. Make sure to always have player 1 assigned to a controller.<br>
