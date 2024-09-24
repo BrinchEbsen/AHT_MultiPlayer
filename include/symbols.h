@@ -239,5 +239,6 @@ in_game int* BaseDisplay_m_pDisplay; //0x804cba84
 in_game void SE_Loop_ChildListDraw(int* self, int* pWnd); //0x80230098
 in_game void XSprite2D_Draw(XSprite2D* self, int* pWnd); //0x80130db4
 in_game void EXWnd_SelectSprite2DTexture(int* self, int* pTexture, bool Filter, bool Wrap); //0x8031ceb0
+in_game void SEMap_BallGadget_AddPlayer(int* self, EXVector* position, EXVector* rotation); //0x802331bc
 
 #endif //SYMBOLS_H

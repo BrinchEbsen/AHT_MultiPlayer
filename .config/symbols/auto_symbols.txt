@@ -116,3 +116,4 @@ BaseDisplay_m_pDisplay = 0x804cba84;
 SE_Loop_ChildListDraw = 0x80230098;
 XSprite2D_Draw = 0x80130db4;
 EXWnd_SelectSprite2DTexture = 0x8031ceb0;
+SEMap_BallGadget_AddPlayer = 0x802331bc;

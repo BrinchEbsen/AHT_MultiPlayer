@@ -69,6 +69,8 @@ MEMORY
     patchDisableGnastyVictory : ORIGIN = 0x80033b4c, LENGTH = 0x100000
     patchDisableRedVictory : ORIGIN = 0x80043e7c, LENGTH = 0x100000
     patchFixSpinning : ORIGIN = 0x80059940, LENGTH = 0x100000
+    patchCamBGPathPhysics : ORIGIN = 0x8000c034, LENGTH = 0x100000
+    patchCamBGUpdatePhysics : ORIGIN = 0x8000b794, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -703,6 +705,26 @@ SECTIONS
         patchFixSpinning.o(.data)
         patchFixSpinning.o(.bss)
     } > patchFixSpinning
+
+    /* Custom section for our hook code */
+    .patchCamBGPathPhysics : 
+    {
+        cam_BG_path_physics.o(.text)
+        cam_BG_path_physics.o(.rodata)
+        cam_BG_path_physics.o(.rodata*)
+        cam_BG_path_physics.o(.data)
+        cam_BG_path_physics.o(.bss)
+    } > patchCamBGPathPhysics
+
+    /* Custom section for our hook code */
+    .patchCamBGUpdatePhysics : 
+    {
+        cam_BG_update_physics.o(.text)
+        cam_BG_update_physics.o(.rodata)
+        cam_BG_update_physics.o(.rodata*)
+        cam_BG_update_physics.o(.data)
+        cam_BG_update_physics.o(.bss)
+    } > patchCamBGUpdatePhysics
 
     .MainCodecave : 
     {

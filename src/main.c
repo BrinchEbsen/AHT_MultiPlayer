@@ -10,6 +10,7 @@
 #define PI 3.14159265359
 
 int gMap_MechaRed = 0x8045b5d8;
+int gLevel_VolcanoDescent2 = 0x8045e480;
 
 //Temporary raycast memory
 struct RayVecs {
@@ -658,42 +659,51 @@ void addNewPlayer(int portNr) {
     //Get rotation
     EXVector* rot = (EXVector*) (item + (0xE0/4));
 
-    //Get the player setup function from the map's vtable
-    SE_Map_v_PlayerSetup setupFunc = GetMapPlayerSetupFunc(map);
+    int* newPlayer;
 
-    setupFunc(map, &v, rot);
-
-    //get the "player" field in the global PlayerSetup
-    Players* setup_Player = &gPlayerState.Setup.Player;
-    Players player1_Player = (Players) *(handler + (0x578/4));
-
-    *setup_Player = player1_Player;
-
-    //TODO: Let player spawn as the character they want
-
-    //Ensure the player is loaded/loading
-    PlayerLoader_PreLoad(&gPlayerLoader, *setup_Player);
-    //Check if it's loaded, set a notification and abort if not.
-    if (!PlayerLoader_IsLoaded(&gPlayerLoader, *setup_Player)) {
-        notLoadedYetNotifTimers[portNr] = 60;
-        return;
+    //Special case for minecart section due to the special path physics
+    if (map == gLevel_VolcanoDescent2) {
+        SEMap_BallGadget_AddPlayer(map, pos, rot);
+        newPlayer = gpPlayer;
     } else {
-        notLoadedYetNotifTimers[portNr] = 0;
-    }
+        //Get the player setup function from the map's vtable
+        SE_Map_v_PlayerSetup setupFunc = GetMapPlayerSetupFunc(map);
 
-    //If the player is set to be Spyro, make it Ember for port 2 and Flame for port 3
-    if ((*setup_Player == Player_Spyro) || (*setup_Player == Player_Ember) || (*setup_Player == Player_Flame)) {
-        if (portNr == 1) {
-            *setup_Player = Player_Ember;
-        } else if (portNr == 2) {
-            *setup_Player = Player_Flame;
+        setupFunc(map, &v, rot);
+
+        //get the "player" field in the global PlayerSetup
+        Players* setup_Player = &gPlayerState.Setup.Player;
+        Players player1_Player = (Players) *(handler + (0x578/4));
+
+        *setup_Player = player1_Player;
+
+        //TODO: Let player spawn as the character they want
+
+        //Ensure the player is loaded/loading
+        PlayerLoader_PreLoad(&gPlayerLoader, *setup_Player);
+        //Check if it's loaded, set a notification and abort if not.
+        if (!PlayerLoader_IsLoaded(&gPlayerLoader, *setup_Player)) {
+            notLoadedYetNotifTimers[portNr] = 60;
+            return;
         } else {
-            *setup_Player = Player_Spyro;
+            notLoadedYetNotifTimers[portNr] = 0;
         }
-    }
 
-    //Create new player handler
-    int* newPlayer = CreatePlayer(map);
+        //If the player is set to be Spyro, make it Ember for port 2 and Flame for port 3
+        if ((*setup_Player == Player_Spyro) || (*setup_Player == Player_Ember) || (*setup_Player == Player_Flame)) {
+            if (portNr == 1) {
+                *setup_Player = Player_Ember;
+            } else if (portNr == 2) {
+                *setup_Player = Player_Flame;
+            } else {
+                *setup_Player = Player_Spyro;
+            }
+        }
+
+        //Create new player handler
+        newPlayer = CreatePlayer(map);
+    }
+    
     if (newPlayer == NULL) { return; }
 
     //Grab ID and assign it to the player
@@ -1028,6 +1038,13 @@ void PlayerHandlerPostUpdate(int* self) {
         //Non-final player is dead and death mode is PlayerDespawn
         if (((*playerStateFlags & 2) != 0) && !handlerIsOnlyPlayerLeft(self) && (deathMode == PlayerDespawn)) {
             int portNr = GetPortNrFromPlayerHandler(self);
+
+            gPlayerState.Health = 0xA0;
+            PLAYER_HEALTH[portNr] = 0xA0;
+
+            playerJoinCooldownTimers[portNr] = playerJoinCooldownTimerMax;
+            showCoolDownTimer = true;
+            
             removePlayer(portNr, true);
             //ig_printf("deleting ballgadget\n");
         }
