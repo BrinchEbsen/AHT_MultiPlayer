@@ -3,6 +3,8 @@ This is a work-in-progress mod for Spyro: A Hero's Tail that adds support for mu
 
 Created using Composer's [code injection utility](https://github.com/C0mposer/C-Game-Modding-Utility).
 
+<i>Note: This mod is not terribly stable, and crashes/freezes can sometimes occour. While playing, make sure you back up your savedata and/or make regular savestates to fall back on. If Dolphin pops up with an error message like "Invalid read from 0x--------, PC = 0x--------", then feel free to share this information with me so I can track down the bug. You can hit me up on Twitter (@EbbeAHT) or Discord (@ebbeaht).</i>
+
 ## Compatibility
 This mod is currently limited specifically to the NTSC GameCube version (G5SE7D).
 
@@ -15,9 +17,10 @@ This mod is currently limited specifically to the NTSC GameCube version (G5SE7D)
 ## Installation
 <i>Patches are not available yet, sorry!</i>
 
-A few methods of installation are provided, all of which use [xdelta](https://www.romhacking.net/utilities/598/) for patching the game.<br>
-<i>If using Netplay, make sure all players have the same version of the mod installed before playing, or desyncs can occour!</i><br>
-<i>If Dolphin is preventing you from booting starting Netplay or there are frequent desyncs, it might be a good idea to have all players use the same patching method.</i>
+A few methods of installation are provided, all of which use [xdelta](https://www.romhacking.net/utilities/598/) for patching the game.
+
+<i>If using Netplay, make sure all players have the same version of the mod installed before playing, or desyncs will occour!</i><br>
+<i>If Dolphin is preventing you from starting Netplay or there are frequent desyncs, it might be a good idea to have all players use the same patching method.</i>
 
 ### ISO Patch
 
@@ -55,7 +58,7 @@ When the game is paused, a separate menu lets you edit the multiplayer settings.
 * Debug information can be toggled when player 1 holds dpad-down.
 
 ### Dolphin Netplay
-The Netplay feature in the Dolphin Emulator can be used to play with people online, as long as they have the same mod installed.
+The Netplay feature in the Dolphin Emulator can be used to play with people online, as long as they have the same version of the mod installed.
 For details on how to set it up or additional troubleshooting, see [Dolphin's official guide](https://dolphin-emu.org/docs/guides/netplay-guide/).
 
 Netplay will only detect games based on ID, so if you have both the unmodded and modded version of the game in the list, it may pick the wrong one. Set up your paths to only include the modded version of the game to fix this.
@@ -72,8 +75,10 @@ Multiple players can take quite a toll on the game, so increasing the CPU clocks
 * Only player 1 can interact with menus, even if others activate them.
 * Attack hitboxes can only target one player at a time, leading to weird situations where attacks phase right through a player. This is especially noticable in bosses.
 * While the turret minigames <i>technically</i> work, all players control the same reticle and their firerates overlap.
-* Sparx minigames are completely broken and multiplayer for him has been disabled at the moment.
+* Sparx minigames are completely broken and multiplayer for him has been disabled for the moment.
 * Switching between Spyro/Hunter is very broken when more than one player is present. Consider leaving just one player to do it.
 * When Blink digs through tunnes he leaves all other players behind in the previous room. Make those players either enter the same tunnel or leave and rejoin.
-* The ball gadget sections are awful in multiplayer due to the high speeds and annoying camera. Consider skipping them, letting one player go through them or just embracing the chaos.
+* The ball gadget sections are awful in multiplayer due to the high speeds and annoying camera (and the minecart section breaks completely). Consider skipping them, letting one player go through them or just embracing the chaos.
 * Sparx attempts to reflect the player with the lowest health, but when he's gone he doesn't return after the player dies, even if the remaining player(s) should have Sparx. Eating fodder resolves this.
+
+Note that some issues have been left in intentionally for now, because they are hard to fix or they don't ruin the game, and may actually provide some fun behavior despite not being made "properly". An example would be letting players move around during cutscenes, which can break things a bit, but is generally just fun to mess around with.

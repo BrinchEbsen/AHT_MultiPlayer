@@ -9,6 +9,8 @@
 
 #define PI 3.14159265359
 
+int gMap_MechaRed = 0x8045b5d8;
+
 //Temporary raycast memory
 struct RayVecs {
     EXVector vecs[3];
@@ -1204,7 +1206,12 @@ void CameraBossPostUpdate(int* self) {
     float* camRange = (float*) (self + (0x410/4));
 
     //Make the camera zoom out the further apart the players get
+
     float buffer = 8.0;
+    //Special case for final boss since the camera is further zoomed out
+    if ((int)GetSpyroMap(0) == gMap_MechaRed) {
+        buffer = 12.0;
+    }
     float factor = 1.2;
     if (biggestRange > buffer) {
         //Amount of additional distance compared to default
@@ -1754,6 +1761,8 @@ void DrawUpdate() {
     if (gpGameWnd != NULL) {
         textSmpPrintF(20, 255, "cam: %x", (int*) *(gpGameWnd + (0x378/4)));
     }
+
+    textSmpPrintF(20, 270, "map: %x", GetSpyroMap(0));
 
     return;
 }
