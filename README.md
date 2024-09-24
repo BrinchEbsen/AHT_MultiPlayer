@@ -15,7 +15,6 @@ This mod is currently limited specifically to the NTSC GameCube version (G5SE7D)
 | Xbox     | ❌    | ❌     |
 
 ## Installation
-<i>Patches are not available yet, sorry!</i>
 
 A few methods of installation are provided, all of which use [xdelta](https://www.romhacking.net/utilities/598/) for patching the game.
 
@@ -78,7 +77,7 @@ Multiple players can take quite a toll on the game, so increasing the CPU clocks
 * Sparx minigames are completely broken and multiplayer for him has been disabled for the moment.
 * Switching between Spyro/Hunter is very broken when more than one player is present. Consider leaving just one player to do it.
 * When Blink digs through tunnes he leaves all other players behind in the previous room. Make those players either enter the same tunnel or leave and rejoin.
-* The ball gadget sections are awful in multiplayer due to the high speeds, frequent bugs and annoying camera. Consider skipping them, letting one player go through them or just embracing the chaos.
+* The ball gadget sections are awful in multiplayer due to the high speeds, frequent bugs (especially in the minecart section) and annoying camera. Consider skipping them, letting one player go through them or just embracing the chaos.
 * Sparx attempts to reflect the player with the lowest health, but when he's gone he doesn't return after the player dies, even if the remaining player(s) should have Sparx. Eating fodder resolves this.
 
 Note that some issues have been left in intentionally for now, because they are hard to fix or they don't ruin the game, and may actually provide some fun behavior despite not being made "properly". An example would be letting players move around during cutscenes, which can break things a bit, but is generally just fun to mess around with.
