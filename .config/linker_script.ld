@@ -68,6 +68,7 @@ MEMORY
     patchCamBGCollisionUpdate : ORIGIN = 0x8010f248, LENGTH = 0x100000
     patchDisableGnastyVictory : ORIGIN = 0x80033b4c, LENGTH = 0x100000
     patchDisableRedVictory : ORIGIN = 0x80043e7c, LENGTH = 0x100000
+    patchFixSpinning : ORIGIN = 0x80059940, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -692,6 +693,16 @@ SECTIONS
         patchDisableRedVictory.o(.data)
         patchDisableRedVictory.o(.bss)
     } > patchDisableRedVictory
+
+    /* Custom section for our hook code */
+    .patchFixSpinning : 
+    {
+        patchFixSpinning.o(.text)
+        patchFixSpinning.o(.rodata)
+        patchFixSpinning.o(.rodata*)
+        patchFixSpinning.o(.data)
+        patchFixSpinning.o(.bss)
+    } > patchFixSpinning
 
     .MainCodecave : 
     {
