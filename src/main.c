@@ -1,6 +1,150 @@
 #include <main.h>
 #include <loadingscreen.h>
 
+bool MOD_INIT = false;
+
+int gMap_MechaRed = 0x8045b5d8;
+int gLevel_VolcanoDescent2 = 0x8045e480;
+
+DeathMode deathMode = PlayerDespawn;
+
+XRGBA COLOR_BLANK = {0, 0, 0, 0};
+
+XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
+XRGBA COLOR_P2 = {0x80, 0x20, 0x20, 0x80}; //Red
+XRGBA COLOR_P3 = {0x08, 0x60, 0x00, 0x80}; //Green
+XRGBA COLOR_P4 = {0x80, 0x50, 0x00, 0x80}; //Yellow
+
+XRGBA COLOR_INV = {0x40, 0x40, 0x80, 0x80};
+XRGBA COLOR_SUP = {0x80, 0x40, 0x40, 0x80};
+
+XRGBA* PLAYER_COLORS[] = {
+    &COLOR_P1,
+    &COLOR_P2,
+    &COLOR_P3,
+    &COLOR_P4
+};
+
+XRGBA* HEALTH_COLORS_NO_UPGRADE[] = {
+    /*0x00*/ &COLOR_BLACK,
+    /*0x20*/ &COLOR_BLACK,
+    /*0x40*/ &COLOR_BLACK,
+    /*0x60*/ &COLOR_GREEN,
+    /*0x80*/ &COLOR_BLUE,
+    /*0xA0*/ &COLOR_P4
+};
+
+XRGBA* HEALTH_COLORS_UPGRADE[] = {
+    /*0x00*/ &COLOR_BLACK,
+    /*0x20*/ &COLOR_BLACK,
+    /*0x40*/ &COLOR_RED,
+    /*0x60*/ &COLOR_GREEN,
+    /*0x80*/ &COLOR_BLUE,
+    /*0xA0*/ &COLOR_P4
+};
+
+RayVecs PLAYER_RAYVECS[4];
+
+char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
+
+Breaths PLAYER_BREATHS[] = {
+    Breath_Fire,
+    Breath_Fire,
+    Breath_Fire,
+    Breath_Fire
+};
+
+int PLAYER_HEALTH[] = { 0xA0, 0xA0, 0xA0, 0xA0 };
+
+bool PLAYER_SUPERCHARGE[] = {false, false, false, false};
+float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+
+bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
+float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+
+//VTABLES
+
+int SPYRO_VTABLE = 0x8040B908;
+int HUNTER_VTABLE = 0x80407338;
+int BLINK_VTABLE = 0x80406488;
+int SGTBYRD_VTABLE = 0x8040aea8;
+int SPARX_PLAYER_VTABLE = 0x80405e38;
+int BALLGADGET_VTABLE = 0x80404ec0;
+int EMBER_VTABLE = 0x804051d8;
+int FLAME_VTABLE = 0x80405428;
+
+int SPARX_VTABLE = 0x8040f8b0;
+int CAMERA_FOLLOW_VTABLE = 0x804161b0;
+int CAMERA_BALLGADGET_FOLLOW_VTABLE = 0x80415790;
+int CAMERA_BOSS_VTABLE = 0x80415650;
+int BLINKYBULLET_VTABLE = 0x80408988;
+int LOCKEDCHEST_VTABLE = 0x80429b18;
+int BOSS_VTABLE = 0x80407148;
+
+Players CHARACTERS[] = {
+    Player_Spyro,
+    Player_Hunter,
+    Player_Blinky,
+    Player_SgtByrd,
+    //Player_Sparx,
+    Player_BallGadget,
+    Player_Ember,
+    Player_Flame
+};
+int CHARACTER_VTABLES[] = {
+    0x8040B908, //Spyro
+    0x80407338, //Hunter
+    0x80406488, //Blink
+    0x8040aea8, //Sgt. Byrd
+    //0x80405e38, //Sparx
+    0x80404ec0, //Ball Gadget
+    0x804051d8, //Ember
+    0x80405428  //Flame
+};
+
+bool initialized = false;
+bool showDebug = false;
+int showDebugTimer = 0;
+bool doMultiplayerOptions = false;
+
+bool playerNotifShowing[] = {
+    false,
+    false,
+    false,
+    false
+};
+
+u16 playerNotifYOffets[] = {
+    250,
+    265,
+    280,
+    295
+};
+
+int playerJoinedNotifTimers[] = {0, 0, 0, 0};
+int notLoadedYetNotifTimers[] = {0, 0, 0, 0};
+int restartGameTimer = 0;
+int restartGameTimerMax = 80;
+int breathSelectNotifTimers[] = {0, 0, 0, 0};
+Breaths lastBreathChangedTo = Breath_Fire;
+int* cameraTargetItem = NULL;
+int players[4] = {-1, -1, -1, -1};
+int lastPlayerUpdated = 0;
+int globalRefPortNr = 0;
+int playerRestoreTimers[4] = {0, 0, 0, 0};
+int playerRestoreTimerMax = 60;
+int playerRestoreNotifTimers[] = {0, 0, 0, 0};
+int playerLeaveTimers[4] = {0, 0, 0, 0};
+int playerLeaveTimerMax = 90;
+bool leaveBecauseDeath[] = {false, false, false, false};
+int playerLeaveNotifTimers[] = {0, 0, 0, 0};
+int playerJoinCooldownTimers[] = {0, 0, 0, 0};
+int playerJoinCooldownTimerMax = PLAYER_JOIN_COOLDOWN_MAX_DEFAULT;
+bool showCoolDownTimer = false;
+
+//Current player handler being tracked for doing a breath attack
+int* currentBreather = NULL;
+
 void SetupVtableHooks() {
     vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_Hook;
     vtable_GUI_PauseMenu_v_DrawStateRunning = GUI_PauseMenu_v_DrawStateRunning_Hook;

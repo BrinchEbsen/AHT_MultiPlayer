@@ -1,6 +1,7 @@
 #include <common.h>
 #include <hashcodes.h>
 #include <symbols.h>
+#include <main.h>
 
 void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
     //Set up text drawing for later

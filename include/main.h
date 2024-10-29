@@ -9,212 +9,158 @@
 #include <symbols.h>
 #include <screenmath.h>
 
-bool MOD_INIT = false;
+extern bool MOD_INIT;
 
-int gMap_MechaRed = 0x8045b5d8;
-int gLevel_VolcanoDescent2 = 0x8045e480;
+extern int gMap_MechaRed;
+extern int gLevel_VolcanoDescent2;
 
 //Temporary raycast memory
-struct RayVecs {
+typedef struct RayVecs {
     EXVector vecs[3];
-};
-typedef struct RayVecs RayVecs;
+} RayVecs;
 
-enum DeathMode {
+typedef enum DeathMode {
     ReloadGame,
     PlayerDespawn,
     DEATHMODE_AMOUNT
-};
-typedef enum DeathMode DeathMode;
+} DeathMode;
 
-DeathMode deathMode = PlayerDespawn;
+extern DeathMode deathMode;
 
 //Empty color
-XRGBA COLOR_BLANK = {0, 0, 0, 0};
+extern XRGBA COLOR_BLANK;
 
-XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
-XRGBA COLOR_P2 = {0x80, 0x20, 0x20, 0x80}; //Red
-XRGBA COLOR_P3 = {0x08, 0x60, 0x00, 0x80}; //Green
-XRGBA COLOR_P4 = {0x80, 0x50, 0x00, 0x80}; //Yellow
+extern XRGBA COLOR_P1; //Blue
+extern XRGBA COLOR_P2; //Red
+extern XRGBA COLOR_P3; //Green
+extern XRGBA COLOR_P4; //Yellow
 
-XRGBA COLOR_INV = {0x40, 0x40, 0x80, 0x80};
-XRGBA COLOR_SUP = {0x80, 0x40, 0x40, 0x80};
+extern XRGBA COLOR_INV;
+extern XRGBA COLOR_SUP;
 
-XRGBA* PLAYER_COLORS[] = {
-    &COLOR_P1,
-    &COLOR_P2,
-    &COLOR_P3,
-    &COLOR_P4
-};
+extern XRGBA* PLAYER_COLORS[];
 
 //Colors of health when the hitpoint upgrade isn't purchased
-XRGBA* HEALTH_COLORS_NO_UPGRADE[] = {
-    /*0x00*/ &COLOR_BLACK,
-    /*0x20*/ &COLOR_BLACK,
-    /*0x40*/ &COLOR_BLACK,
-    /*0x60*/ &COLOR_GREEN,
-    /*0x80*/ &COLOR_BLUE,
-    /*0xA0*/ &COLOR_P4
-};
+extern XRGBA* HEALTH_COLORS_NO_UPGRADE[];
 
 //Colors of health when the hitpoint upgrade is purchased
-XRGBA* HEALTH_COLORS_UPGRADE[] = {
-    /*0x00*/ &COLOR_BLACK,
-    /*0x20*/ &COLOR_BLACK,
-    /*0x40*/ &COLOR_RED,
-    /*0x60*/ &COLOR_GREEN,
-    /*0x80*/ &COLOR_BLUE,
-    /*0xA0*/ &COLOR_P4
-};
+extern XRGBA* HEALTH_COLORS_UPGRADE[];
 
 //Hotswap values for temporary raycast memory
-RayVecs PLAYER_RAYVECS[4];
+extern RayVecs PLAYER_RAYVECS[4];
 
 //The names that are displayed above the players
-char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
+extern char* PLAYER_NAMES[];
 
 //Hotswap values for selected breath
-Breaths PLAYER_BREATHS[] = {
-    Breath_Fire,
-    Breath_Fire,
-    Breath_Fire,
-    Breath_Fire
-};
+extern Breaths PLAYER_BREATHS[];
 
 //Hotswap values for health
-int PLAYER_HEALTH[] = { 0xA0, 0xA0, 0xA0, 0xA0 };
+extern int PLAYER_HEALTH[];
 
 //Hotswap values for whether supercharge is active
-bool PLAYER_SUPERCHARGE[] = {false, false, false, false};
+extern bool PLAYER_SUPERCHARGE[];
 //Hotswap values for supercharge timers
-float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+extern float PLAYER_SUPERCHARGE_TIMER[];
 
 //Hotswap values for whether invincibility is active
-bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
+extern bool PLAYER_INVINCIBILITY[];
 //Hotswap values for invincibility timers
-float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
+extern float PLAYER_INVINCIBILITY_TIMER[];
 
 //VTABLES
 
-int SPYRO_VTABLE = 0x8040B908;
-int HUNTER_VTABLE = 0x80407338;
-int BLINK_VTABLE = 0x80406488;
-int SGTBYRD_VTABLE = 0x8040aea8;
-int SPARX_PLAYER_VTABLE = 0x80405e38;
-int BALLGADGET_VTABLE = 0x80404ec0;
-int EMBER_VTABLE = 0x804051d8;
-int FLAME_VTABLE = 0x80405428;
+extern int SPYRO_VTABLE;
+extern int HUNTER_VTABLE;
+extern int BLINK_VTABLE;
+extern int SGTBYRD_VTABLE;
+extern int SPARX_PLAYER_VTABLE;
+extern int BALLGADGET_VTABLE;
+extern int EMBER_VTABLE;
+extern int FLAME_VTABLE;
 
-int SPARX_VTABLE = 0x8040f8b0;
-int CAMERA_FOLLOW_VTABLE = 0x804161b0;
-int CAMERA_BALLGADGET_FOLLOW_VTABLE = 0x80415790;
-int CAMERA_BOSS_VTABLE = 0x80415650;
-int BLINKYBULLET_VTABLE = 0x80408988;
-int LOCKEDCHEST_VTABLE = 0x80429b18;
-int BOSS_VTABLE = 0x80407148;
+extern int SPARX_VTABLE;
+extern int CAMERA_FOLLOW_VTABLE;
+extern int CAMERA_BALLGADGET_FOLLOW_VTABLE;
+extern int CAMERA_BOSS_VTABLE;
+extern int BLINKYBULLET_VTABLE;
+extern int LOCKEDCHEST_VTABLE;
+extern int BOSS_VTABLE;
 
 //Lookup tables for characters and their vtables
 
 #define CHARACTER_AMOUNT 7
-Players CHARACTERS[] = {
-    Player_Spyro,
-    Player_Hunter,
-    Player_Blinky,
-    Player_SgtByrd,
-    //Player_Sparx,
-    Player_BallGadget,
-    Player_Ember,
-    Player_Flame
-};
-int CHARACTER_VTABLES[] = {
-    0x8040B908, //Spyro
-    0x80407338, //Hunter
-    0x80406488, //Blink
-    0x8040aea8, //Sgt. Byrd
-    //0x80405e38, //Sparx
-    0x80404ec0, //Ball Gadget
-    0x804051d8, //Ember
-    0x80405428  //Flame
-};
+extern Players CHARACTERS[];
+extern int CHARACTER_VTABLES[];
 
 //Whether players have been initialized yet (mostly for testing reasons)
-bool initialized = false;
+extern bool initialized;
 //Whether to display debug information on the screen
-bool showDebug = false;
+extern bool showDebug;
 //How many frames the "show debug button" has been held
-int showDebugTimer = 0;
+extern int showDebugTimer;
 
-bool doMultiplayerOptions = false;
+extern bool doMultiplayerOptions;
 
 //Whether a notification is being shown for the given player
-bool playerNotifShowing[] = {
-    false,
-    false,
-    false,
-    false
-};
+extern bool playerNotifShowing[];
 
 //Y-positions of the player notifications on the left of the screen
-u16 playerNotifYOffets[] = {
-    250,
-    265,
-    280,
-    295
-};
+extern u16 playerNotifYOffets[];
 
 //Notif timer for when a player joins
-int playerJoinedNotifTimers[] = {0, 0, 0, 0};
+extern int playerJoinedNotifTimers[];
 
 //Notif timer for when a player isn't loaded and has to wait before joining
-int notLoadedYetNotifTimers[] = {0, 0, 0, 0};
+extern int notLoadedYetNotifTimers[];
 
 //How many frames the "restart game" button has been held
-int restartGameTimer = 0;
+extern int restartGameTimer;
 //How many frames held before restarting
-int restartGameTimerMax = 80;
+extern int restartGameTimerMax;
 
 //Notif timer for when a player selects a new breath
-int breathSelectNotifTimers[] = {0, 0, 0, 0};
+extern int breathSelectNotifTimers[];
 //This is set when any player selects a new breath
-Breaths lastBreathChangedTo = Breath_Fire;
+extern Breaths lastBreathChangedTo;
 
 //The custom item that the follower camera is set to target
-int* cameraTargetItem = NULL;
+extern int* cameraTargetItem;
 
 //Contains the itemhandler ID's for each of the four players. -1 if not in use.
-int players[4] = {-1, -1, -1, -1};
+extern int players[4];
 //Last player that was updated
-int lastPlayerUpdated = 0;
+extern int lastPlayerUpdated;
 //Controller port number of the global player references. Should be made to match gpPlayer and gpPlayerItem.
-int globalRefPortNr = 0;
+extern int globalRefPortNr;
 
 //How many frames each player has held down the button to restore control/visibility
-int playerRestoreTimers[4] = {0, 0, 0, 0};
+extern int playerRestoreTimers[4];
 //How many frames held before restoring
-int playerRestoreTimerMax = 60;
+extern int playerRestoreTimerMax;
 
 //Notif timer for when a player is restoring control
-int playerRestoreNotifTimers[] = {0, 0, 0, 0};
+extern int playerRestoreNotifTimers[];
 
 //How many frames each player has held down the button to leave
-int playerLeaveTimers[4] = {0, 0, 0, 0};
+extern int playerLeaveTimers[4];
 //How many frames held before leaving
-int playerLeaveTimerMax = 90;
-bool leaveBecauseDeath[] = {false, false, false, false};
+extern int playerLeaveTimerMax;
+extern bool leaveBecauseDeath[];
 
 //Notif timer for when a player is leaving
-int playerLeaveNotifTimers[] = {0, 0, 0, 0};
+extern int playerLeaveNotifTimers[];
 
 //How many frames left for each player until they can join
-int playerJoinCooldownTimers[] = {0, 0, 0, 0};
+extern int playerJoinCooldownTimers[];
 //The value the cooldown timers are set to when a player dies
 #define PLAYER_JOIN_COOLDOWN_MAX_DEFAULT 60 * 10 //20 seconds
-int playerJoinCooldownTimerMax = PLAYER_JOIN_COOLDOWN_MAX_DEFAULT;
+extern int playerJoinCooldownTimerMax;
 
-bool showCoolDownTimer = false;
+extern bool showCoolDownTimer;
 
 //Current player handler being tracked for doing a breath attack
-int* currentBreather = NULL;
+extern int* currentBreather;
 
 //Functions
 
