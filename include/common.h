@@ -2,6 +2,10 @@
 #define COMMON_H
 #include <custom_types.h>
 
+//Defines
+
+#define PI 3.14159265359
+
 //Structs
 
 struct EXVector
@@ -106,6 +110,21 @@ struct EXDList
     struct EXDListItem* tail;
 };
 typedef struct EXDList EXDList;
+
+struct EXODListItem
+{
+    struct EXODListItem* prev;
+    struct EXODListItem* next;
+    void* object;
+};
+typedef struct EXODListItem EXODListItem;
+
+struct EXODList
+{
+    EXODListItem* head;
+    EXODListItem* tail;
+};
+typedef struct EXODList EXODList;
 
 struct EXCommonCamera
 {
@@ -413,6 +432,16 @@ enum Buttons
     Button_Z         = 0x800000
 };
 typedef enum Buttons Buttons;
+
+enum BreathType
+{
+    fire = 0x1,
+    water = 0x2,
+    ice = 0x4,
+    elec = 0x8,
+    all_types = 0x3f
+};
+typedef enum BreathType BreathType;
 
 struct Analog
 {

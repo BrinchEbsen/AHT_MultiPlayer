@@ -3,5 +3,8 @@
         "**/.sublime": true,
         "**/.compile_scripts": true,
         "**/.config": true
+    },
+    "files.associations": {
+        "hooks.h": "c"
     }
 }

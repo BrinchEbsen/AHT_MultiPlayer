@@ -156,6 +156,10 @@ typedef int (*GUI_PanelItem_v_StateRunning_func)(int*);
 in_game GUI_PanelItem_v_StateRunning_func vtable_GUI_PanelItem_v_StateRunning; //0x80445d28
 in_game int GUI_PanelItem_v_StateRunning(int* self); //0x8021eb3c
 
+typedef bool (*XGameWnd_Draw_func)(int*);
+in_game XGameWnd_Draw_func vtable_XGameWnd_Draw; //0x80417668
+in_game bool XGameWnd_Draw(int* self); //0x801317f8
+
 //The v_DrawStateRunning method on the GUI_PauseMenu class.
 typedef int (*GUI_PauseMenu_v_DrawStateRunning_func)(int*, int*);
 //v_DrawStateRunning vtable entry for GUI_PauseMenu
@@ -177,6 +181,8 @@ typedef EXRuntimeClass* (*GetRuntimeClass_func)(void);
 
 //The SetMiniGameDie method on the SEMap_Minigame class
 typedef void (*SE_Map_SetMiniGameDie_func)(int*);
+
+typedef bool (*ItemHandler_TestBreathType_func)(int*, BreathType);
 
 in_game int SE_GameLoop_State; //0x8046F344
 in_game float Camera_Follow_Elevation_Default; //0x803bf66c
@@ -224,12 +230,15 @@ in_game int* Player_SetMode(int* self, int mode, int force, int params); //0x800
 in_game int* Player_SetVisibility(int* self, bool onoff); //0x80060844
 in_game int* Player_TurnOn(int* self, bool onoff, int mode); //0x8005cb40
 in_game int* Player_UnlockControls(int* self); //0x8005bdfc
+in_game bool Player_FlameObjects(int* self, int breath, EXVector* pos, float dist); //0x80065d60
 
 in_game void XSEItemEnv_AddXSEItem(int* _theItemEnv, int* pItem, uint GroupFlags); //0x802409d0
 in_game int* XSEItem_CreateObject(void); //0x8023e070
 
 in_game bool ItemHandler_SEUpdate(int* self); //0x80241d64
 in_game void ItemHandler_ChangeAnimSkin(int* self, int* animator, uint skinHash); //0x800b9aa8
+in_game void ItemHandler_AddToBreath(int* self, int types); //0x800bc304
+
 //Get the handler from the item environment that uses the given handler ID, starting from the given index.
 in_game int* ItemEnv_FindUniqueIDHandler(int* self, uint handlerID, int index); //0x80240c48
 
@@ -240,5 +249,14 @@ in_game void SE_Loop_ChildListDraw(int* self, int* pWnd); //0x80230098
 in_game void XSprite2D_Draw(XSprite2D* self, int* pWnd); //0x80130db4
 in_game void EXWnd_SelectSprite2DTexture(int* self, int* pTexture, bool Filter, bool Wrap); //0x8031ceb0
 in_game void SEMap_BallGadget_AddPlayer(int* self, EXVector* position, EXVector* rotation); //0x802331bc
+
+//List of objects to check for breath collision
+in_game EXODList gpBreath; //0x804cc494
+//Add node to the end of the list
+in_game void EXODList_AddTail(EXODList* self, EXODListItem* pItem, void* pObject); //0x802c727c
+//Check if the given list item is a member of the list
+in_game bool EXODList_IsMember(EXODList* self, EXODListItem* pTarget); //0x802c734c
+
+in_game int EXBaseDisplay_AddWnd(int* self, int* pWnd); //0x8027fff0
 
 #endif //SYMBOLS_H

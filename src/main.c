@@ -1,228 +1,13 @@
-#include <common.h>
-#include <hashcodes.h>
-#include <Sound.h>
-#include <textprint.h>
-#include <buttons.h>
-#include <playerstate.h>
-#include <symbols.h>
-#include <screenmath.h>
+#include <main.h>
+#include <loadingscreen.h>
 
-#define PI 3.14159265359
+void SetupVtableHooks() {
+    vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_Hook;
+    vtable_GUI_PauseMenu_v_DrawStateRunning = GUI_PauseMenu_v_DrawStateRunning_Hook;
+    vtable_XGameWnd_Draw = XGameWnd_Draw_Hook;
+    vtable_LoadingLoopDraw = LoadingLoopDraw_ReImpl;
+}
 
-int gMap_MechaRed = 0x8045b5d8;
-int gLevel_VolcanoDescent2 = 0x8045e480;
-
-//Temporary raycast memory
-struct RayVecs {
-    EXVector vecs[3];
-};
-typedef struct RayVecs RayVecs;
-
-enum DeathMode {
-    ReloadGame,
-    PlayerDespawn,
-    DEATHMODE_AMOUNT
-};
-typedef enum DeathMode DeathMode;
-
-DeathMode deathMode = PlayerDespawn;
-
-//Vtable hook stuff
-
-int GUI_PanelItem_v_StateRunning_Hook(int* self);
-GUI_PanelItem_v_StateRunning_func GUI_PanelItem_v_StateRunning_hookFunc = GUI_PanelItem_v_StateRunning_Hook;
-
-int GUI_PauseMenu_v_DrawStateRunning_Hook(int* self, int* pWnd);
-GUI_PauseMenu_v_DrawStateRunning_func GUI_PauseMenu_v_DrawStateRunning_hookFunc = GUI_PauseMenu_v_DrawStateRunning_Hook;
-
-void LoadingLoopDraw_ReImpl(int* self, int* pWnd);
-LoadingLoopDraw_func LoadingLoopDraw_hookFunc = LoadingLoopDraw_ReImpl;
-
-//Empty color
-XRGBA COLOR_BLANK = {0, 0, 0, 0};
-
-XRGBA COLOR_P1 = {0x00, 0x48, 0x80, 0x80}; //Blue
-XRGBA COLOR_P2 = {0x80, 0x20, 0x20, 0x80}; //Red
-XRGBA COLOR_P3 = {0x08, 0x60, 0x00, 0x80}; //Green
-XRGBA COLOR_P4 = {0x80, 0x50, 0x00, 0x80}; //Yellow
-
-XRGBA COLOR_INV = {0x40, 0x40, 0x80, 0x80};
-XRGBA COLOR_SUP = {0x80, 0x40, 0x40, 0x80};
-
-XRGBA* PLAYER_COLORS[] = {
-    &COLOR_P1,
-    &COLOR_P2,
-    &COLOR_P3,
-    &COLOR_P4
-};
-
-//Colors of health when the hitpoint upgrade isn't purchased
-XRGBA* HEALTH_COLORS_NO_UPGRADE[] = {
-    /*0x00*/ &COLOR_BLACK,
-    /*0x20*/ &COLOR_BLACK,
-    /*0x40*/ &COLOR_BLACK,
-    /*0x60*/ &COLOR_GREEN,
-    /*0x80*/ &COLOR_BLUE,
-    /*0xA0*/ &COLOR_P4
-};
-
-//Colors of health when the hitpoint upgrade is purchased
-XRGBA* HEALTH_COLORS_UPGRADE[] = {
-    /*0x00*/ &COLOR_BLACK,
-    /*0x20*/ &COLOR_BLACK,
-    /*0x40*/ &COLOR_RED,
-    /*0x60*/ &COLOR_GREEN,
-    /*0x80*/ &COLOR_BLUE,
-    /*0xA0*/ &COLOR_P4
-};
-
-//Hotswap values for temporary raycast memory
-RayVecs PLAYER_RAYVECS[4];
-
-//The names that are displayed above the players
-char* PLAYER_NAMES[] = { "P1", "P2", "P3", "P4" };
-
-//Hotswap values for selected breath
-Breaths PLAYER_BREATHS[] = {
-    Breath_Fire,
-    Breath_Fire,
-    Breath_Fire,
-    Breath_Fire
-};
-
-//Hotswap values for health
-int PLAYER_HEALTH[] = { 0xA0, 0xA0, 0xA0, 0xA0 };
-
-//Hotswap values for whether supercharge is active
-bool PLAYER_SUPERCHARGE[] = {false, false, false, false};
-//Hotswap values for supercharge timers
-float PLAYER_SUPERCHARGE_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
-
-//Hotswap values for whether invincibility is active
-bool PLAYER_INVINCIBILITY[] = {false, false, false, false};
-//Hotswap values for invincibility timers
-float PLAYER_INVINCIBILITY_TIMER[] = { 0.0, 0.0, 0.0, 0.0};
-
-//VTABLES
-
-int SPYRO_VTABLE = 0x8040B908;
-int HUNTER_VTABLE = 0x80407338;
-int BLINK_VTABLE = 0x80406488;
-int SGTBYRD_VTABLE = 0x8040aea8;
-int SPARX_PLAYER_VTABLE = 0x80405e38;
-int BALLGADGET_VTABLE = 0x80404ec0;
-int EMBER_VTABLE = 0x804051d8;
-int FLAME_VTABLE = 0x80405428;
-
-int SPARX_VTABLE = 0x8040f8b0;
-int CAMERA_FOLLOW_VTABLE = 0x804161b0;
-int CAMERA_BALLGADGET_FOLLOW_VTABLE = 0x80415790;
-int CAMERA_BOSS_VTABLE = 0x80415650;
-int BLINKYBULLET_VTABLE = 0x80408988;
-int LOCKEDCHEST_VTABLE = 0x80429b18;
-int BOSS_VTABLE = 0x80407148;
-
-//Lookup tables for characters and their vtables
-
-#define CHARACTER_AMOUNT 7
-Players CHARACTERS[] = {
-    Player_Spyro,
-    Player_Hunter,
-    Player_Blinky,
-    Player_SgtByrd,
-    //Player_Sparx,
-    Player_BallGadget,
-    Player_Ember,
-    Player_Flame
-};
-int CHARACTER_VTABLES[] = {
-    0x8040B908, //Spyro
-    0x80407338, //Hunter
-    0x80406488, //Blink
-    0x8040aea8, //Sgt. Byrd
-    //0x80405e38, //Sparx
-    0x80404ec0, //Ball Gadget
-    0x804051d8, //Ember
-    0x80405428  //Flame
-};
-
-//Whether players have been initialized yet (mostly for testing reasons)
-bool initialized = false;
-//Whether to display debug information on the screen
-bool showDebug = false;
-//How many frames the "show debug button" has been held
-int showDebugTimer = 0;
-
-bool doMultiplayerOptions = false;
-
-//Whether a notification is being shown for the given player
-bool playerNotifShowing[] = {
-    false,
-    false,
-    false,
-    false
-};
-
-//Y-positions of the player notifications on the left of the screen
-u16 playerNotifYOffets[] = {
-    250,
-    265,
-    280,
-    295
-};
-
-//Notif timer for when a player joins
-int playerJoinedNotifTimers[] = {0, 0, 0, 0};
-
-//Notif timer for when a player isn't loaded and has to wait before joining
-int notLoadedYetNotifTimers[] = {0, 0, 0, 0};
-
-//How many frames the "restart game" button has been held
-int restartGameTimer = 0;
-//How many frames held before restarting
-int restartGameTimerMax = 80;
-
-//Notif timer for when a player selects a new breath
-int breathSelectNotifTimers[] = {0, 0, 0, 0};
-//This is set when any player selects a new breath
-Breaths lastBreathChangedTo = Breath_Fire;
-
-//The custom item that the follower camera is set to target
-int* cameraTargetItem = NULL;
-
-//Contains the itemhandler ID's for each of the four players. -1 if not in use.
-int players[4] = {-1, -1, -1, -1};
-//Last player that was updated
-int lastPlayerUpdated = 0;
-//Controller port number of the global player references. Should be made to match gpPlayer and gpPlayerItem.
-int globalRefPortNr = 0;
-
-//How many frames each player has held down the button to restore control/visibility
-int playerRestoreTimers[4] = {0, 0, 0, 0};
-//How many frames held before restoring
-int playerRestoreTimerMax = 60;
-
-//Notif timer for when a player is restoring control
-int playerRestoreNotifTimers[] = {0, 0, 0, 0};
-
-//How many frames each player has held down the button to leave
-int playerLeaveTimers[4] = {0, 0, 0, 0};
-//How many frames held before leaving
-int playerLeaveTimerMax = 90;
-bool leaveBecauseDeath[] = {false, false, false, false};
-
-//Notif timer for when a player is leaving
-int playerLeaveNotifTimers[] = {0, 0, 0, 0};
-
-//How many frames left for each player until they can join
-int playerJoinCooldownTimers[] = {0, 0, 0, 0};
-//The value the cooldown timers are set to when a player dies
-#define PLAYER_JOIN_COOLDOWN_MAX_DEFAULT 60 * 10 //20 seconds
-int playerJoinCooldownTimerMax = PLAYER_JOIN_COOLDOWN_MAX_DEFAULT;
-
-bool showCoolDownTimer = false;
-
-//Check for the Z button being pressed twice within 20 frames at the given pad number
 bool checkZDoublePress(int padNr) {
     //Number of presses within the timer window
     static int numPressed[] = {0, 0, 0, 0};
@@ -266,7 +51,6 @@ bool checkZDoublePress(int padNr) {
     return false;
 }
 
-//Approximate luminance from RGB
 int XRGBA_Luminance(XRGBA* col) {
     int r = col->r;
     int g = col->g;
@@ -275,7 +59,6 @@ int XRGBA_Luminance(XRGBA* col) {
     return (r+r+r+b+g+g+g+g)>>3;
 }
 
-//Balance RGB values to match given luminance
 void XRGBA_Balance(XRGBA* col, int bal) {
     int lum = XRGBA_Luminance(col);
     float ratio = (float)bal/(float)lum;
@@ -285,7 +68,6 @@ void XRGBA_Balance(XRGBA* col, int bal) {
     col->b = (int)(col->b * ratio);
 }
 
-//Distance between two EXVectors
 float EXVector_Dist(EXVector* v1, EXVector* v2) {
     EXVector3 mag = {
         .x = v2->x - v1->x,
@@ -300,7 +82,6 @@ float EXVector_Dist(EXVector* v1, EXVector* v2) {
     );
 }
 
-//Copy EXVector src into dest
 void EXVector_Copy(EXVector* dest, EXVector* src) {
     dest->x = src->x;
     dest->y = src->y;
@@ -308,14 +89,12 @@ void EXVector_Copy(EXVector* dest, EXVector* src) {
     dest->w = src->w;
 }
 
-//Get the runtime class from the given handler
 EXRuntimeClass* GetHandlerRuntimeClass(int* handler) {
     int* vtable = (int*) *(handler + (0x4/4));
     GetRuntimeClass_func getRTC = (GetRuntimeClass_func) *(vtable + (0x8/4));
     return getRTC();
 }
 
-//Check if the given handler is an instance of or inherits from the given runtime class
 bool HandlerIsOrInheritsFrom(int* handler, EXRuntimeClass* class) {
     EXRuntimeClass* myClass = GetHandlerRuntimeClass(handler);
 
@@ -330,13 +109,11 @@ bool HandlerIsOrInheritsFrom(int* handler, EXRuntimeClass* class) {
     return false;
 }
 
-//Get the flag for the gameloop being paused
 bool GameIsPaused() {
     int flags = *((&gGameLoop) + (0x88/4));
     return (flags & 0x80000000) != 0;
 }
 
-//Get a string representation of the given breath
 char* GetBreathName(Breaths breath) {
     switch (breath) {
         case Breath_Fire:
@@ -352,7 +129,6 @@ char* GetBreathName(Breaths breath) {
     return "Invalid";
 }
 
-//Get the color associated with the given health value
 XRGBA* GetHealthColor(int health) {
     //Sparx' colors are different depending on if the upgrade has been bought
     bool gottenUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
@@ -367,21 +143,18 @@ XRGBA* GetHealthColor(int health) {
     }
 }
 
-//Get the function pointer to the PlayerSetup method for the given map
 SE_Map_v_PlayerSetup GetMapPlayerSetupFunc(int* map) {
     int* vtable = (int*) *(map + (0x74/4));
 
     return *(vtable + (0xc0/4));
 }
 
-//Get the function pointer to the Delete method for the given player handler
 ItemHandler_Delete GetHandlerDeleteFunc(int* handler) {
     int* vtable = (int*) *(handler + (0x4/4));
 
     return *(vtable + (0x50/4));
 }
 
-//Get the number of player items currently kept track of
 int NumberOfPlayers() {
     int count = 0;
 
@@ -394,7 +167,6 @@ int NumberOfPlayers() {
     return count;
 }
 
-//Get the number of player items currently kept track of, who can have Sparx following around
 int NumberOfPlayersWhoCanHaveSparx() {
     int count = 0;
 
@@ -420,12 +192,10 @@ int NumberOfPlayersWhoCanHaveSparx() {
     return count;
 }
 
-//Check if the only player is player 1
 bool OnlyPlayer1Exists() {
     return (players[0] != -1) && (NumberOfPlayers() == 1);
 }
 
-//Check if the given handler is the only player left.
 bool handlerIsOnlyPlayerLeft(int* handler) {
     int ID = *(handler + (0x8/4));
 
@@ -438,7 +208,6 @@ bool handlerIsOnlyPlayerLeft(int* handler) {
     return true;
 }
 
-//Get the associated controller port index for the given player handler
 int GetPortNrFromPlayerHandler(int* handler) {
     if (handler == NULL) { return 0; }
 
@@ -452,8 +221,6 @@ int GetPortNrFromPlayerHandler(int* handler) {
     return 0;
 }
 
-//Set the global port number, handler reference and handler item reference to the player at the given port number.
-//Returns whether the player handler could be found.
 bool SetPlayerRefToPort(int portNr) {
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
     if (handler == NULL) { return false; }
@@ -466,7 +233,6 @@ bool SetPlayerRefToPort(int portNr) {
     return true;
 }
 
-//Check if the given handler's vtable matches that of a player
 bool HandlerIsPlayer(int* handler) {
     if (handler == NULL) { return false; }
     int vtable = *(handler + 0x4/4);
@@ -480,7 +246,6 @@ bool HandlerIsPlayer(int* handler) {
     return false;
 }
 
-//Runs through all players, inserts the handlers into the given list of size 4, and returns amount of handlers found.
 int GetArrayOfPlayerHandlers(int** list) {
     int listindex = 0;
     
@@ -527,7 +292,6 @@ int* GetFirstPlayerNotZeroHP() {
     return ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
 }
 
-//Reset all player references and search the item list to populate it again.
 void initializePlayers() {
     //Reset references
     players[0] = -1;
@@ -559,8 +323,6 @@ void initializePlayers() {
     initialized = true;
 }
 
-//Remove any handler references that don't exist anymore.
-//If no players are referenced, do a full initialize of the player list.
 void updatePlayerList() {
     bool allEmpty = true;
     
@@ -626,7 +388,6 @@ void reinitializeCamera(int* player) {
     }
 }
 
-//Add new player and assign it to the given port number
 void addNewPlayer(int portNr) {
     //Only perform on players 2, 3 and 4
     if ((portNr < 0) || (portNr > 3)) { return; }
@@ -715,7 +476,6 @@ void addNewPlayer(int portNr) {
     playerLeaveNotifTimers[portNr] = 0;
 }
 
-//Remove a player from the game, restore follower camera, reload game if this was the last player left
 void removePlayer(int portNr, bool died) {
     //Only perform on players 1, 2, 3 and 4
     if ((portNr < 0) || (portNr > 3)) { return; }
@@ -761,7 +521,6 @@ void removePlayer(int portNr, bool died) {
     leaveBecauseDeath[portNr] = died;
 }
 
-//Set a player to be visible and controllable
 void restorePlayerControl(int portNr) {
     if (portNr == -1) { return; }
 
@@ -779,7 +538,6 @@ void restorePlayerControl(int portNr) {
     }
 }
 
-//Teleport all players to the player described by portNr
 void teleportPlayersToPlayer(int portNr) {
     if (players[portNr] == -1) { return; }
 
@@ -807,7 +565,6 @@ void teleportPlayersToPlayer(int portNr) {
     }
 }
 
-//Returns whatever pad number is moving the right stick the most
 int whoShouldControlCamera() {
     int port = 0;
     float biggestMag = 0.0;
@@ -836,7 +593,6 @@ int whoShouldControlCamera() {
     return port;
 }
 
-//Checks if the given item is found in the item list
 bool itemExists(int* item) {
     if (item == NULL) { return false; }
 
@@ -855,7 +611,6 @@ bool itemExists(int* item) {
     return false;
 }
 
-//Create camera target item if it doesn't exist or if it's uninitialized
 void updateCameraTargetItem() {
     if (!itemExists(cameraTargetItem)) {
         //Construct camera target item
@@ -866,9 +621,6 @@ void updateCameraTargetItem() {
     }
 }
 
-//Get the middle point between all players, as well as the biggest range between them.
-//Returns false if no players were found.
-//Tries ignoring any player in the dying state.
 bool GetPlayerPosMidAndRanges(EXVector3* middle, float* biggestRange) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
@@ -954,8 +706,6 @@ bool GetPlayerPosMidAndRanges(EXVector3* middle, float* biggestRange) {
     return true;
 }
 
-//Code that runs prior to a player's SEUpdate.
-//Apply hotswap values if players have joined.
 void PlayerHandlerPreUpdate(int* self) {
     gpPlayer = self;
     gpPlayerItem = (int*) *self;
@@ -993,10 +743,15 @@ void PlayerHandlerPreUpdate(int* self) {
             }
         }
     }
+
+    EXODListItem* breath = (EXODListItem*)(self + (0x3bc/4));
+    if (!EXODList_IsMember(&gpBreath, breath)) {
+        breath->next = NULL;
+        breath->prev = NULL;
+        ItemHandler_AddToBreath(self, 1);
+    }
 }
 
-//Code that runs after a player's SEUpdate.
-//Store resulting hotswap values for the player.
 void PlayerHandlerPostUpdate(int* self) {
     //After the update, we store the playerstate globals that resulted from the update.
     if (OnlyPlayer1Exists()) { return; }
@@ -1051,9 +806,6 @@ void PlayerHandlerPostUpdate(int* self) {
     }
 }
 
-//Code that runs before Sparx updates.
-//Follow the first available player.
-//Make Sparx react to the lowest health among players.
 void SparxPreUpdate(int* self) {
     if (players[0] == -1) { return; }
 
@@ -1080,8 +832,6 @@ void SparxPreUpdate(int* self) {
     }
 }
 
-//Code that runs before any other handler updates.
-//Set global references to the closest player.
 void MiscHandlerPreUpdate(int* self) {
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
@@ -1171,8 +921,6 @@ void CameraBallGadgetFollowPostUpdate(int* self) {
     //}
 }
 
-//Code that runs after the follower camera's SEUpdate.
-//Manipulate camera variables to make them work with multiple players.
 void CameraFollowPostUpdate(int* self) {
     EXVector3 middle = {0};
     float biggestRange = 0;
@@ -1252,7 +1000,6 @@ void CameraBossPostUpdate(int* self) {
     }
 }
 
-//Draw the player's name, health and powerup status
 void DrawPlayerMarker(int portNr) {
     int* handler = ItemEnv_FindUniqueIDHandler(&theItemEnv, players[portNr], 0);
     if (handler == NULL) { return; }
@@ -1472,12 +1219,16 @@ void HandleMultiplayerMenu() {
     DrawMultiplayerMenu();
 }
 
-//main_hook.s | Runs every frame
 void MainUpdate() {
-    //Setup vtable hooks
-    vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_hookFunc;
-    vtable_GUI_PauseMenu_v_DrawStateRunning = GUI_PauseMenu_v_DrawStateRunning_hookFunc;
-    vtable_LoadingLoopDraw = LoadingLoopDraw_hookFunc;
+    if (!MOD_INIT) {
+        MOD_INIT = true;
+
+        SetupVtableHooks();
+    }
+
+    for (int i = 0; i < CHARACTER_AMOUNT; i++) {
+        *((int*)(CHARACTER_VTABLES[i] + 0xBC)) = VtableSwap_Player_TestBreathType;
+    }
 
     //If the gameloop isn't running, abort
     if ((SE_GameLoop_State != 3) || GameIsPaused()) {
@@ -1584,8 +1335,6 @@ void MainUpdate() {
     return;
 }
 
-//draw_hook.s | Runs every frame during the HUD draw loop
-//Drawing stuff to the screen should be done here to avoid garbled textures
 void DrawUpdate() {
     //Draw markers for the players if player 1 isn't alone.
     if ((players[0] == -1) || (NumberOfPlayers() > 1)) {
@@ -1795,14 +1544,11 @@ int GUI_PauseMenu_v_DrawStateRunning_Hook(int* self, int* pWnd) {
     return GUI_PauseMenu_v_DrawStateRunning(self, pWnd);
 }
 
-//scan_hook.s | On the frame this function returns true, scanmode will be enabled/disabled.
-//Typically you'd return true if a button has just been pressed.
 bool ScanUpdate() {
     //return isButtonPressed(Button_Z, g_PadNum);
     return false;
 }
 
-//runs right before an itemhandler is updated
 bool ItemHandler_SEUpdate_Hook(int* self) {
     int vtable = *(self + 0x4/4);
     int ID = *(self + 0x8/4);
@@ -1883,8 +1629,6 @@ bool ItemHandler_SEUpdate_Hook(int* self) {
     return res;
 }
 
-//Replaces the call to EXItemEnv::UpdateItems_Physics
-//replaces the original code but adds swapping around player references.
 void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
     EXDList* list = (EXDList*) *(self + (0x80/4));
 
@@ -1909,8 +1653,6 @@ void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
     }
 }
 
-//Runs before the game checks for the player changing breath
-//Only used for the "player changed breath" notification on the HUD
 bool TestBreathChangeHook(int* self) {
     //Check if the breath changed before running any logic
     bool changed = Spyro_TestBreathChange(self);
@@ -1937,7 +1679,6 @@ bool TestBreathChangeHook(int* self) {
     return changed;
 }
 
-//After sparx eats a butterfly (add 1 unit of health to all players)
 void Sparx_SetPlayerHealth_Hook(int* self, int health) {
     //Check if we should use the multiplayer health mode
     if (NumberOfPlayers() > 1) {
@@ -1956,7 +1697,6 @@ void Sparx_SetPlayerHealth_Hook(int* self, int health) {
     }
 }
 
-//After a special butterfly is collected (set all health to full)
 void Butterfly_Special_SetHealth_Hook(int* self, int health) {
     gPlayerState.Health = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
@@ -1965,7 +1705,6 @@ void Butterfly_Special_SetHealth_Hook(int* self, int health) {
     PLAYER_HEALTH[3] = 0xA0;
 }
 
-//Sets all players' health and the global health to full
 void SetAllHealthFull() {
     gPlayerState.Health = 0xA0;
     PLAYER_HEALTH[0] = 0xA0;
@@ -1974,7 +1713,6 @@ void SetAllHealthFull() {
     PLAYER_HEALTH[3] = 0xA0;
 }
 
-//Returns whether or not a map inherets from or is an instance of SEMap_MiniGame
 bool MapIsMinigame(int* map) {
     if (map == NULL) { return false; }
 
@@ -1990,7 +1728,18 @@ bool MapIsMinigame(int* map) {
     return false;
 }
 
-//Replaces function at 0x800a31b0 and 0x80047f4c (both Spyro and Hunter die the same way)
+bool VtableSwap_Player_TestBreathType(int* self, BreathType type) {
+    return false; //temporary
+
+    ig_printf("self: %x, currentBreather: %x\n", self, currentBreather);
+
+    if ((currentBreather == NULL) || (currentBreather == self)) {
+        return false;
+    }
+    
+    return (type & 1) != 0;
+}
+
 void ReImpl_SpyroHunter_urghhhImDead(int* self) {
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         PlayerState_SetHealth(&gPlayerState, 0xA0);
@@ -2007,7 +1756,6 @@ void ReImpl_SpyroHunter_urghhhImDead(int* self) {
     }
 }
 
-//Replaces function at 0x80020ebc
 void ReImpl_Blink_urghhhImDead(int* self) {
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
@@ -2042,7 +1790,6 @@ void ReImpl_Blink_urghhhImDead(int* self) {
     }
 }
 
-//Replaces function at 0x8007c440
 void ReImpl_SgtByrd_urghhhImDead(int* self) {
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
@@ -2092,7 +1839,6 @@ void GadgetPad_Invincibility_Hook() {
     PLAYER_INVINCIBILITY_TIMER[portNr] = gPlayerState.InvincibleTimer;
 }
 
-//Edit behavior of icons when running in multiplayer
 int GUI_PanelItem_v_StateRunning_Hook(int* self) {
     //Normal behavior if singleplayer
     if (NumberOfPlayers() <= 1) { return GUI_PanelItem_v_StateRunning(self); }
@@ -2134,7 +1880,10 @@ int GUI_PanelItem_v_StateRunning_Hook(int* self) {
     return res;
 }
 
-//Replaces the Delete method for the XSEItemHandler_Player class
+bool XGameWnd_Draw_Hook(int* self) {
+    return XGameWnd_Draw(self);
+}
+
 int ReImpl_XSEItemHandler_Player_Delete(int* self) {
     Players player = *(self + (0x578/4));
 
@@ -2180,8 +1929,6 @@ int ReImpl_XSEItemHandler_Player_Delete(int* self) {
     return 2;
 }
 
-//Replaces the DoKill method call on the XSEItemHandler class
-//when called from one of the players' Delete method when it's trying to delete Sparx
 void ReImpl_XSEItemHandler_DoKill(int* self) {
     //We don't wanna unload Sparx if there's more than 1 player
     if (NumberOfPlayersWhoCanHaveSparx() > 1) { return; }
@@ -2203,211 +1950,16 @@ void ChangePlayer_Hook() {
     players[globalRefPortNr] = *(gpPlayer + (0x8/4));
 }
 
-//Reimplementation of the loading draw loop.
-void LoadingLoopDraw_ReImpl(int* self, int* pWnd) {
-    //Set up text drawing for later
-    XRGBA textCol = {0, 0x60, 0, 0x80};
-    XWnd_SetText(pWnd, HT_File_Panel, HT_Font_Test, &textCol, 1.0f, Centre);
+bool Particle_Fire_FlameObjects_Hook(int* self, int breath, EXVector* pos, float dist) {
+    currentBreather = self;
 
-    /*
-     * Set up drawing dimensions
-     */
+    //ig_printf("set currentBreather\n");
 
-    //Create a copy of the display's safeframe rect
-    EXRect safeFrame;
-    EXRect_Copy(&safeFrame, BaseDisplay_m_pDisplay + (0x34/4));
+    bool res = Player_FlameObjects(self, breath, pos, dist);
 
-    //Set the text rect to be slightly smaller than the safeframe
-    EXRect* TextRect = (EXRect*)(pWnd + (0x2dc/4));
-    TextRect->x = safeFrame.x + 0x20;
-    TextRect->y = safeFrame.y + 0x20;
-    TextRect->w = safeFrame.w - 0x40;
-    TextRect->h = safeFrame.h - 0x40;
+    currentBreather = NULL;
 
-    //Get the center of the screen
-    EXPoint centerPoint = {
-        safeFrame.x + safeFrame.w/2,
-        safeFrame.y + safeFrame.h/2
-    };
+    //ig_printf("reset currentBreather\n");
 
-    /*
-     * Set up texture to be used for the sectors
-     */
-
-    //Load a white 16x16 texture
-    int *pTexture = Util_GetGameInfoTexture(HT_Texture_White16x16);
-
-    //(Virtual method call) Select this texture to be used in the current window
-    EXWnd_SelectSprite2DTexture(pWnd, pTexture, false, false);
-
-    /*
-     * Draw a sprite for some reason.
-     * This doesn't even show up, removing has no effect.
-     */
-    
-    //Create sprite object
-    XSprite2D sprite2D = {
-    /* Col */ (XRGBA){0, 0, 0, 0x80},
-    /* x   */ 0,
-    /* y   */ 0,
-    /* w   */ *(pWnd + (0x8/4)),
-    /* h   */ *(pWnd + (0x6/4)),
-    /* u1  */ 0.0,
-    /* v1  */ 0.0,
-    /* u2  */ 1.0,
-    /* v2  */ 1.0
-    };
-
-    //Draw the sprite on the window
-    XSprite2D_Draw(&sprite2D, pWnd);
-
-    /*
-     * Set up sector drawing math
-     */
-
-    ig_printf("");
-    //Reset RNG-seed
-    RandSetSeed(&g_EXRandClass, 0);
-
-    //Get update counter (counts up every frame)
-    int* updateCounter = (self + (0x6c/4));
-
-    //Make player 2 control this counter
-    *updateCounter += (int)(Pads_Analog[1].LStick_Y * 20.0);
-
-    //Scale it down and make it cycle from 0 to 1. Cycles every 1000 frames
-    float timeLine = ((float)*updateCounter) * 0.001;
-    float timeCycle = ig_fmodf(timeLine, 1.0);
-
-    /*
-     * Draw sectors.
-     * Hard-coded to draw 30 at all times. 
-     */
-    for (int i = 0; i < 30; i++) {
-        /*
-         * Draw two sectors:
-         * One with a uniform green colour,
-         * one right next to it that fades to black.
-         * 
-         * Result looks like one whole sector that fades out at its inner edge.
-         */
-
-        //temp values
-        float n1;
-        float n2;
-
-        //Current point in the sector's life cycle. Cycles at the same rate as timeCycle, just offset slightly.
-        n1 = Randf(&g_EXRandClass); //Range: 0 to 1
-        float lifeCycle = ig_fmodf(timeCycle + n1, 1.0);
-        
-        //Calculate the radii
-        n1 = Randf(&g_EXRandClass) * 4.0 + 10.0; //Range: 10 to 14
-        n2 = n1 - (lifeCycle * 10.0);
-        n1 = Randf(&g_EXRandClass) * 80.0 + 50.0; //Range: 50 to 130
-
-        float radius2 = 400.0 / n2; //Radius dividing the two sectors
-        float radius3 = radius2 + (n1 / n2); //Outer radius
-        //Change the outer ring thickness based on player 4 input
-        radius3 += (Pads_Analog[3].LStick_Y + 0.5) * 30.0;
-        float radius1 = radius2 - (n1 * (1.0/8.0)); //Inner radius
-
-        //Calculate start angle
-        n1 = Randf(&g_EXRandClass) * 2*PI; //Range: 0 to 2*PI
-        n2 = Randf(&g_EXRandClass); //Range: 0 to 1
-        float startAng = timeLine * (n2 * 20.0 - 10.0) + n1;
-
-        //Calculate end angle
-        n1 = Randf(&g_EXRandClass) * 80.0 + 16.0; //Range: 16 to 96
-        float endAng = n1 * 0.017453292 + startAng;
-
-        //Sector resolution (how many "vertices" there are)
-        float sectorRes = (n1 / 12.0) + 1.0;
-
-        /*
-         * Calculate colors.
-         * Make the sector fade out at the end of its lifecycle.
-         */
-
-        float fAlpha = lifeCycle * 1000.0;
-
-        //Color alpha doesn't go above 128
-        if (fAlpha > 128.0) {
-            fAlpha = 128.0;
-        }
-
-        //Start fading sector out at the end of its lifecycle
-        if (lifeCycle > 0.85) {
-            fAlpha = fAlpha * ((1.0 - lifeCycle) * (2.0/3.0) * 10.0);
-        }
-
-        //Clamp between 0 and the max opacity of all sectors
-        if (fAlpha < 0.0) {
-            fAlpha = 0.0;
-        }
-        if (fAlpha > 80.0) {
-            fAlpha = 80.0;
-        }
-        
-        char cAlpha = (char)fAlpha;
-
-        XRGBA sectorCol = {0, 0x40, 0, cAlpha};
-
-        //Change color based on what player 3 input
-        float pad3X = Pads_Analog[2].LStick_X;
-        float pad3Y = Pads_Analog[2].LStick_Y;
-        if ((pad3X != 0.0) || (pad3Y != 0.0)) {
-            sectorCol.g = (int)(pad3X * (float)0x40) + 0x40;
-
-            if (pad3X < 0.0) {
-                sectorCol.r += (int)((-pad3X) * (float)0x40);
-                sectorCol.b += (int)((-pad3X) * (float)0x40);
-            } else {
-                sectorCol.r += (int)((pad3X) * (float)0x40);
-                sectorCol.b += (int)((pad3X) * (float)0x40);
-            }
-            
-            if (pad3Y > 0.0) {
-                sectorCol.r += (int)(pad3Y * (float)0x40);
-            } else {
-                sectorCol.b += (int)((-pad3Y) * (float)0x40);
-            }
-
-            XRGBA_Balance(&sectorCol, 0x20);
-        }
-        
-        XRGBA fadeCol = {0, 0, 0, cAlpha};
-
-        //Set the centerpoint according to player 1 input
-        centerPoint.x += (int)(Pads_Analog[0].LStick_X * lifeCycle * 20.0);
-        centerPoint.y += (int)(Pads_Analog[0].LStick_Y * lifeCycle * 20.0);
-
-        /*
-         * Parameters for DrawSector call are:
-         * 1:  Center point
-         * 2:  Inner radius
-         * 3:  Outer radius
-         * 4:  Start angle in radians
-         * 5:  End angle in radians
-         * 6:  Color of inner vertex 1
-         * 7:  Color of outer vertex 1
-         * 8:  Color of inner vertex 2
-         * 9:  Color of outer vertex 2
-         * 10: Resolution of sector (how many "polygons" it is split into)
-         * 11: Window where the sector will be drawn
-         */
-
-        //Draw outer thick sector
-        Util_DrawSector(&centerPoint, radius2, radius3, startAng, endAng, &sectorCol, &sectorCol, &sectorCol, &sectorCol, sectorRes, pWnd);
-        //Draw inner slim sector with a gradient
-        Util_DrawSector(&centerPoint, radius1, radius2, startAng, endAng, &fadeCol,   &sectorCol, &fadeCol,   &sectorCol, sectorRes, pWnd);
-    }
-
-    //Draw "loading" text if this value is 2
-    if (*(self + (0x128/4)) == 2) {
-        XWnd_TextPrint(pWnd, HT_Text_Loading);
-    }
-
-    //Draw all children of this loop in the current window
-    SE_Loop_ChildListDraw(self, pWnd);
-    return;
+    return res;
 }

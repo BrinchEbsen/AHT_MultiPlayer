@@ -71,6 +71,7 @@ MEMORY
     patchFixSpinning : ORIGIN = 0x80059940, LENGTH = 0x100000
     patchCamBGPathPhysics : ORIGIN = 0x8000c034, LENGTH = 0x100000
     patchCamBGUpdatePhysics : ORIGIN = 0x8000b794, LENGTH = 0x100000
+    hookFlameParticleFlameObjects : ORIGIN = 0x8007a8b0, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -726,6 +727,16 @@ SECTIONS
         cam_BG_update_physics.o(.bss)
     } > patchCamBGUpdatePhysics
 
+    /* Custom section for our hook code */
+    .hookFlameParticleFlameObjects : 
+    {
+        hookFlameParticleFlameObjects.o(.text)
+        hookFlameParticleFlameObjects.o(.rodata)
+        hookFlameParticleFlameObjects.o(.rodata*)
+        hookFlameParticleFlameObjects.o(.data)
+        hookFlameParticleFlameObjects.o(.bss)
+    } > hookFlameParticleFlameObjects
+
     .MainCodecave : 
     {
         main.o(.text)
@@ -773,6 +784,15 @@ SECTIONS
         screenmath.o(.sbss)
         screenmath.o(.scommon)
         screenmath.o(.screenmath.o.*)
+        loadingscreen.o(.text)
+        loadingscreen.o(.rodata)
+        loadingscreen.o(.rodata*)
+        loadingscreen.o(.data)
+        loadingscreen.o(.bss)
+        loadingscreen.o(.sdata)
+        loadingscreen.o(.sbss)
+        loadingscreen.o(.scommon)
+        loadingscreen.o(.loadingscreen.o.*)
         *(.text) /* Last section, place any potential remaining code sections */
         *(.branch_lt)
     } > MainCodecave
