@@ -137,6 +137,8 @@ in_game wchar_t* GetText(int* _gGameText, long textHash, long pWho, int Color); 
 //This only works if the SFX is loaded in a soundbank. Generic and streamed sounds are always available.
 in_game void PlaySFX(long hash); //0x8024bc58
 
+in_game bool PlaySFX_AtItem(long hash, int* item); //0x8024bd00
+
 //Random Number Generation
 in_game uint Rand32(uint* _g_EXRandClass); //0x802f50a8
 in_game float Randf(uint* _g_EXRandClass); //0x802f50e0

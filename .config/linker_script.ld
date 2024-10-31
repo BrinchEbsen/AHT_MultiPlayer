@@ -72,6 +72,7 @@ MEMORY
     patchCamBGPathPhysics : ORIGIN = 0x8000c034, LENGTH = 0x100000
     patchCamBGUpdatePhysics : ORIGIN = 0x8000b794, LENGTH = 0x100000
     hookFlameParticleFlameObjects : ORIGIN = 0x8007a8b0, LENGTH = 0x100000
+    hookElecBreathStop : ORIGIN = 0x8009b894, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -736,6 +737,16 @@ SECTIONS
         hookFlameParticleFlameObjects.o(.data)
         hookFlameParticleFlameObjects.o(.bss)
     } > hookFlameParticleFlameObjects
+
+    /* Custom section for our hook code */
+    .hookElecBreathStop : 
+    {
+        hookElecBreathStop.o(.text)
+        hookElecBreathStop.o(.rodata)
+        hookElecBreathStop.o(.rodata*)
+        hookElecBreathStop.o(.data)
+        hookElecBreathStop.o(.bss)
+    } > hookElecBreathStop
 
     .MainCodecave : 
     {

@@ -99,6 +99,11 @@ void SetupVtableHooks() {
     vtable_LoadingLoopDraw = LoadingLoopDraw_ReImpl;
 }
 
+inline bool isPointer(void* ptr) {
+    if ((ptr < 0x817FFFFF) && (ptr >= 0x80000000)) { return true; }
+    return false;
+}
+
 bool checkZDoublePress(int padNr) {
     //Number of presses within the timer window
     static int numPressed[] = {0, 0, 0, 0};
@@ -1314,7 +1319,7 @@ bool VtableSwap_Player_TestBreathType(int* self, BreathType type) {
 
 void ReImpl_SpyroHunter_urghhhImDead(int* self) {
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
-        PlayerState_SetHealth(&gPlayerState, 0xA0);
+        SetAllHealthFull();
         PlayerState_RestartGame(&gPlayerState);
     } else {
         int portNr = GetPortNrFromPlayerHandler(self);
@@ -1329,8 +1334,13 @@ void ReImpl_SpyroHunter_urghhhImDead(int* self) {
 }
 
 void ReImpl_Blink_urghhhImDead(int* self) {
+    int portNr = GetPortNrFromPlayerHandler(self);
+
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
+
+        //Reset health
+        SetAllHealthFull();
 
         if (MapIsMinigame(map)) {
             int* vtable = (int*) *(map + (0x74/4));
@@ -1339,20 +1349,19 @@ void ReImpl_Blink_urghhhImDead(int* self) {
 
             //Set some flags in the animator
             int* anim = (int*) *(self + (0x144/4));
-            ushort* itemFlags = (ushort*) (anim + (0xc/4));
-            *itemFlags &= ~((ushort) 1);
+            if (isPointer(anim)) {
+                ushort* itemFlags = (ushort*) (anim + (0xc/4));
+                *itemFlags &= ~((ushort) 1);
+            }
 
             //Set some flags in the player handler
             int* playerStateFlags = self + (0x580/4);
             *playerStateFlags |= 2; //ps_dead
         } else {
             //If it's not a minigame level, just do the usual stuff
-            PlayerState_SetHealth(&gPlayerState, 0xA0);
             PlayerState_RestartGame(&gPlayerState);
         }
     } else {
-        int portNr = GetPortNrFromPlayerHandler(self);
-
         gPlayerState.Health = 0xA0;
         PLAYER_HEALTH[portNr] = 0xA0;
 
@@ -1366,6 +1375,9 @@ void ReImpl_SgtByrd_urghhhImDead(int* self) {
     if (handlerIsOnlyPlayerLeft(self) || (deathMode == ReloadGame)) {
         int* map = PlayerSetupInfo_GetMap(&gPlayerState.Setup);
 
+        //Reset health
+        SetAllHealthFull();
+
         if (MapIsMinigame(map)) {
             int* vtable = (int*) *(map + (0x74/4));
             SE_Map_SetMiniGameDie_func setDieFunc = (SE_Map_SetMiniGameDie_func) *(vtable + (0xf8/4));
@@ -1376,7 +1388,6 @@ void ReImpl_SgtByrd_urghhhImDead(int* self) {
             *playerStateFlags |= 2; //ps_dead
         } else {
             //If it's not a minigame level, just do the usual stuff
-            PlayerState_SetHealth(&gPlayerState, 0xA0);
             PlayerState_RestartGame(&gPlayerState);
         }
     } else {
@@ -1536,3 +1547,8 @@ bool Particle_Fire_FlameObjects_Hook(int* self, int breath, EXVector* pos, float
     return res;
 }
 
+bool ElecBreathStop_PlaySFX_NullCheckFix_Hook(uint soundHash, int* item) {
+    if (gpPlayer == NULL) { return false; }
+
+    return PlaySFX_AtItem(soundHash, (int*) *gpPlayer);
+}

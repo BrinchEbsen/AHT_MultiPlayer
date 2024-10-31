@@ -1,0 +1,2 @@
+nop
+bl ElecBreathStop_PlaySFX_NullCheckFix_Hook

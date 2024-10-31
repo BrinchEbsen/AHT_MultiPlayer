@@ -65,6 +65,7 @@ GameSetPauseOn = 0x802400c8;
 GameSetPauseOff = 0x80240164;
 GetText = 0x8012df2c;
 PlaySFX = 0x8024bc58;
+PlaySFX_AtItem = 0x8024bd00;
 Rand32 = 0x802f50a8;
 Randf = 0x802f50e0;
 RandSetSeed = 0x802f5088;

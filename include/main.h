@@ -129,7 +129,12 @@ extern int* currentBreather;
 
 void SetupVtableHooks();
 
-//Check for the Z button being pressed twice within 20 frames at the given pad number
+/// @brief Check that a pointer is within the GameCube work RAM address space.
+bool isPointer(void* ptr);
+
+/// @brief Check for the Z button being pressed twice within 20 frames.
+/// @param padNr Pad number for the controller to check for.
+/// @return true if the Z button has been double-pressed.
 bool checkZDoublePress(int padNr);
 
 //Distance between two EXVectors
@@ -261,5 +266,8 @@ void ReImpl_XSEItemHandler_DoKill(int* self);
 void ChangePlayer_Hook();
 
 bool Particle_Fire_FlameObjects_Hook(int* self, int breath, EXVector* pos, float dist);
+
+//Add a null-check before playing the sfx for ending the electric breath.
+bool ElecBreathStop_PlaySFX_NullCheckFix_Hook(uint soundHash, int* item);
 
 #endif
