@@ -1,6 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 #include <common.h>
+#include <colors.h>
 #include <hashcodes.h>
 #include <Sound.h>
 #include <textprint.h>
@@ -28,45 +29,7 @@ typedef enum DeathMode {
 extern DeathMode deathMode;
 
 //Empty color
-extern XRGBA COLOR_BLANK;
 
-extern XRGBA COLOR_P1; //Blue
-extern XRGBA COLOR_P2; //Red
-extern XRGBA COLOR_P3; //Green
-extern XRGBA COLOR_P4; //Yellow
-
-extern XRGBA COLOR_INV;
-extern XRGBA COLOR_SUP;
-
-extern XRGBA* PLAYER_COLORS[];
-
-//Colors of health when the hitpoint upgrade isn't purchased
-extern XRGBA* HEALTH_COLORS_NO_UPGRADE[];
-
-//Colors of health when the hitpoint upgrade is purchased
-extern XRGBA* HEALTH_COLORS_UPGRADE[];
-
-//Hotswap values for temporary raycast memory
-extern RayVecs PLAYER_RAYVECS[4];
-
-//The names that are displayed above the players
-extern char* PLAYER_NAMES[];
-
-//Hotswap values for selected breath
-extern Breaths PLAYER_BREATHS[];
-
-//Hotswap values for health
-extern int PLAYER_HEALTH[];
-
-//Hotswap values for whether supercharge is active
-extern bool PLAYER_SUPERCHARGE[];
-//Hotswap values for supercharge timers
-extern float PLAYER_SUPERCHARGE_TIMER[];
-
-//Hotswap values for whether invincibility is active
-extern bool PLAYER_INVINCIBILITY[];
-//Hotswap values for invincibility timers
-extern float PLAYER_INVINCIBILITY_TIMER[];
 
 //VTABLES
 
@@ -102,6 +65,8 @@ extern int showDebugTimer;
 
 extern bool doMultiplayerOptions;
 
+extern bool showMP_Notifs;
+
 //Whether a notification is being shown for the given player
 extern bool playerNotifShowing[];
 
@@ -127,8 +92,6 @@ extern Breaths lastBreathChangedTo;
 //The custom item that the follower camera is set to target
 extern int* cameraTargetItem;
 
-//Contains the itemhandler ID's for each of the four players. -1 if not in use.
-extern int players[4];
 //Last player that was updated
 extern int lastPlayerUpdated;
 //Controller port number of the global player references. Should be made to match gpPlayer and gpPlayerItem.
@@ -169,12 +132,6 @@ void SetupVtableHooks();
 //Check for the Z button being pressed twice within 20 frames at the given pad number
 bool checkZDoublePress(int padNr);
 
-//Approximate luminance from RGB
-int XRGBA_Luminance(XRGBA* col);
-
-//Balance RGB values to match given luminance
-void XRGBA_Balance(XRGBA* col, int bal);
-
 //Distance between two EXVectors
 float EXVector_Dist(EXVector* v1, EXVector* v2);
 
@@ -202,66 +159,11 @@ SE_Map_v_PlayerSetup GetMapPlayerSetupFunc(int* map);
 //Get the function pointer to the Delete method for the given player handler
 ItemHandler_Delete GetHandlerDeleteFunc(int* handler);
 
-//Get the number of player items currently kept track of
-int NumberOfPlayers();
-
-//Get the number of player items currently kept track of, who can have Sparx following around
-int NumberOfPlayersWhoCanHaveSparx();
-
-//Check if the only player is player 1
-bool OnlyPlayer1Exists();
-
-//Check if the given handler is the only player left.
-bool handlerIsOnlyPlayerLeft(int* handler);
-
-//Get the associated controller port index for the given player handler
-int GetPortNrFromPlayerHandler(int* handler);
-
-//Set the global port number, handler reference and handler item reference to the player at the given port number.
-//Returns whether the player handler could be found.
-bool SetPlayerRefToPort(int portNr);
-
-//Check if the given handler's vtable matches that of a player
-bool HandlerIsPlayer(int* handler);
-
-//Runs through all players, inserts the handlers into the given list of size 4, and returns amount of handlers found.
-int GetArrayOfPlayerHandlers(int** list);
-
-//Get the first player who has sparx.
-int* GetFirstPlayerNotZeroHP();
-
-//Reset all player references and search the item list to populate it again.
-void initializePlayers();
-
-//Remove any handler references that don't exist anymore.
-//If no players are referenced, do a full initialize of the player list.
-void updatePlayerList();
-
-//Add new player and assign it to the given port number
-void addNewPlayer(int portNr);
-
-//Remove a player from the game, restore follower camera, reload game if this was the last player left
-void removePlayer(int portNr, bool died);
-
-//Set a player to be visible and controllable
-void restorePlayerControl(int portNr);
-
-//Teleport all players to the player described by portNr
-void teleportPlayersToPlayer(int portNr);
-
-//Returns whatever pad number is moving the right stick the most
-int whoShouldControlCamera();
-
 //Checks if the given item is found in the item list
 bool itemExists(int* item);
 
 //Create camera target item if it doesn't exist or if it's uninitialized
 void updateCameraTargetItem();
-
-//Get the middle point between all players, as well as the biggest range between them.
-//Returns false if no players were found.
-//Tries ignoring any player in the dying state.
-bool GetPlayerPosMidAndRanges(EXVector3* middle, float* biggestRange);
 
 //Code that runs prior to a player's SEUpdate.
 //Apply hotswap values if players have joined.
@@ -324,9 +226,6 @@ void Sparx_SetPlayerHealth_Hook(int* self, int health);
 
 //After a special butterfly is collected (set all health to full)
 void Butterfly_Special_SetHealth_Hook(int* self, int health);
-
-//Sets all players' health and the global health to full
-void SetAllHealthFull();
 
 //Returns whether or not a map inherets from or is an instance of SEMap_MiniGame
 bool MapIsMinigame(int* map);

@@ -1,4 +1,5 @@
 #include <common.h>
+#include <colors.h>
 #include <symbols.h>
 #include <hashcodes.h>
 

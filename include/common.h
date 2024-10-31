@@ -459,14 +459,6 @@ typedef struct Analog Analog;
 
 //Constants
 
-extern XRGBA COLOR_TEXT;
-extern XRGBA COLOR_WHITE;
-extern XRGBA COLOR_BLACK;
-extern XRGBA COLOR_RED;
-extern XRGBA COLOR_GREEN;
-extern XRGBA COLOR_BLUE;
-extern XRGBA COLOR_LIGHT_RED;
-extern XRGBA COLOR_LIGHT_GREEN;
-extern XRGBA COLOR_LIGHT_BLUE;
+
 
 #endif /* COMMON_H */
