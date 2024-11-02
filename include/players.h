@@ -1,6 +1,11 @@
 #ifndef PLAYERS_H
 #define PLAYERS_H
-#include <main.h>
+#include <common.h>
+
+//Temporary raycast memory
+typedef struct RayVecs {
+    EXVector vecs[3];
+} RayVecs;
 
 extern XRGBA* PLAYER_COLORS[];
 
@@ -81,6 +86,8 @@ void removePlayer(int portNr, bool died);
 //Set a player to be visible and controllable
 void restorePlayerControl(int portNr);
 
+void teleportPlayer(int* player, EXVector* dest);
+
 //Teleport all players to the player described by portNr
 void teleportPlayersToPlayer(int portNr);
 
@@ -94,5 +101,11 @@ bool GetPlayerPosMidAndRanges(EXVector3* middle, float* biggestRange);
 
 //Sets all players' health and the global health to full
 void SetAllHealthFull();
+
+//Get a string representation of the given breath
+char* GetBreathName(Breaths breath);
+
+//Get the color associated with the given health value
+XRGBA* GetHealthColor(int health);
 
 #endif

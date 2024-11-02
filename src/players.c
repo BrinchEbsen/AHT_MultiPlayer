@@ -1,4 +1,7 @@
 #include <players.h>
+#include <colors.h>
+#include <symbols.h>
+#include <main.h>
 
 XRGBA* PLAYER_COLORS[] = {
     &COLOR_P1,
@@ -399,6 +402,28 @@ void restorePlayerControl(int portNr) {
     }
 }
 
+void teleportPlayer(int* player, EXVector* dest) {
+    if (player == NULL) { return; }
+
+    EXVector* lastPos = (EXVector*) (player + (0x8c0 / 4));
+    EXVector_Copy(lastPos, dest);
+
+    int* item = (int*) *player;
+    EXVector* pos = (EXVector*) (item + (0xd0 / 4));
+    EXVector_Copy(pos, dest);
+
+    int* itemPhys = (int*) *(item + (0x150 / 4));
+    if (itemPhys == NULL) { return; }
+
+    EXVector* prevPos = (EXVector*) (itemPhys + (0x50 / 4));
+    EXVector* oldPos = (EXVector*) (itemPhys + (0x148 / 4));
+    EXVector* collIntersect = (EXVector*) (itemPhys + (0x138 / 4));
+
+    EXVector_Copy(prevPos, dest);
+    EXVector_Copy(oldPos, dest);
+    EXVector_Copy(collIntersect, dest);
+}
+
 void teleportPlayersToPlayer(int portNr) {
     if (players[portNr] == -1) { return; }
 
@@ -409,20 +434,10 @@ void teleportPlayersToPlayer(int portNr) {
     int count = GetArrayOfPlayerHandlers(&list);
     if (count < 2) { return; } //Ignore if only 1 player
 
-    int* item = (int*) *handler;
-    EXVector* pos = (EXVector*) (item + (0xD0/4));
-
     for (int i = 0; i < count; i++) {
-        if (i == portNr) { continue; } //ignore self
+        if (handler == list[i]) { continue; }
 
-        int* oHandler = list[i];
-        int* oItem = (int*) *oHandler;
-
-        EXVector* oPos = (EXVector*) (oItem + (0xD0/4));
-
-        oPos->x = pos->x;
-        oPos->y = pos->y;
-        oPos->z = pos->z;
+        teleportPlayer(list[i], handler);
     }
 }
 
@@ -543,5 +558,34 @@ void SetAllHealthFull() {
     gPlayerState.Health = 0xA0;
     for (int i = 0; i < 4; i++) {
         PLAYER_HEALTH[i] = 0xA0;
+    }
+}
+
+char* GetBreathName(Breaths breath) {
+    switch (breath) {
+        case Breath_Fire:
+            return "Fire";
+        case Breath_Electric:
+            return "Electric";
+        case Breath_Water:
+            return "Water"; 
+        case Breath_Ice:
+            return "Ice";
+    }
+
+    return "Invalid";
+}
+
+XRGBA* GetHealthColor(int health) {
+    //Sparx' colors are different depending on if the upgrade has been bought
+    bool gottenUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
+
+    //Each unit of health is 0x20
+    int index = health/0x20;
+
+    if (gottenUpgrade) {
+        return HEALTH_COLORS_UPGRADE[index];
+    } else {
+        return HEALTH_COLORS_NO_UPGRADE[index];
     }
 }

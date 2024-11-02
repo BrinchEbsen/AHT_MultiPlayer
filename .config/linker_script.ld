@@ -73,6 +73,15 @@ MEMORY
     patchCamBGUpdatePhysics : ORIGIN = 0x8000b794, LENGTH = 0x100000
     hookFlameParticleFlameObjects : ORIGIN = 0x8007a8b0, LENGTH = 0x100000
     hookElecBreathStop : ORIGIN = 0x8009b894, LENGTH = 0x100000
+    hookCloudyElevator_IsRider1 : ORIGIN = 0x801eac64, LENGTH = 0x100000
+    hookCloudyElevator_IsRider2 : ORIGIN = 0x801ead4c, LENGTH = 0x100000
+    hookCloudyElevator_PlatformAttach : ORIGIN = 0x801eada8, LENGTH = 0x100000
+    hookSetPlayer : ORIGIN = 0x80060ff8, LENGTH = 0x100000
+    hookCloudyElevator_CheckButton : ORIGIN = 0x801ead78, LENGTH = 0x100000
+    hookReImpl_Lift2A_2C_LiftStop : ORIGIN = 0x801eb238, LENGTH = 0x100000
+    hookCloudyElevator_RemoveRider : ORIGIN = 0x801e9598, LENGTH = 0x100000
+    hookCloudyElevator_FreeAttach : ORIGIN = 0x801e9648, LENGTH = 0x100000
+    hookSunkenElevator_IsRider1 : ORIGIN = 0x801e8d24, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -748,6 +757,96 @@ SECTIONS
         hookElecBreathStop.o(.bss)
     } > hookElecBreathStop
 
+    /* Custom section for our hook code */
+    .hookCloudyElevator_IsRider1 : 
+    {
+        hookCloudyElevator_IsRider1.o(.text)
+        hookCloudyElevator_IsRider1.o(.rodata)
+        hookCloudyElevator_IsRider1.o(.rodata*)
+        hookCloudyElevator_IsRider1.o(.data)
+        hookCloudyElevator_IsRider1.o(.bss)
+    } > hookCloudyElevator_IsRider1
+
+    /* Custom section for our hook code */
+    .hookCloudyElevator_IsRider2 : 
+    {
+        hookCloudyElevator_IsRider2.o(.text)
+        hookCloudyElevator_IsRider2.o(.rodata)
+        hookCloudyElevator_IsRider2.o(.rodata*)
+        hookCloudyElevator_IsRider2.o(.data)
+        hookCloudyElevator_IsRider2.o(.bss)
+    } > hookCloudyElevator_IsRider2
+
+    /* Custom section for our hook code */
+    .hookCloudyElevator_PlatformAttach : 
+    {
+        hookCloudyElevator_PlatformAttach.o(.text)
+        hookCloudyElevator_PlatformAttach.o(.rodata)
+        hookCloudyElevator_PlatformAttach.o(.rodata*)
+        hookCloudyElevator_PlatformAttach.o(.data)
+        hookCloudyElevator_PlatformAttach.o(.bss)
+    } > hookCloudyElevator_PlatformAttach
+
+    /* Custom section for our hook code */
+    .hookSetPlayer : 
+    {
+        hookSetPlayer.o(.text)
+        hookSetPlayer.o(.rodata)
+        hookSetPlayer.o(.rodata*)
+        hookSetPlayer.o(.data)
+        hookSetPlayer.o(.bss)
+    } > hookSetPlayer
+
+    /* Custom section for our hook code */
+    .hookCloudyElevator_CheckButton : 
+    {
+        hookCloudyElevator_CheckButton.o(.text)
+        hookCloudyElevator_CheckButton.o(.rodata)
+        hookCloudyElevator_CheckButton.o(.rodata*)
+        hookCloudyElevator_CheckButton.o(.data)
+        hookCloudyElevator_CheckButton.o(.bss)
+    } > hookCloudyElevator_CheckButton
+
+    /* Custom section for our hook code */
+    .hookReImpl_Lift2A_2C_LiftStop : 
+    {
+        hookReImpl_Lift2A_2C_LiftStop.o(.text)
+        hookReImpl_Lift2A_2C_LiftStop.o(.rodata)
+        hookReImpl_Lift2A_2C_LiftStop.o(.rodata*)
+        hookReImpl_Lift2A_2C_LiftStop.o(.data)
+        hookReImpl_Lift2A_2C_LiftStop.o(.bss)
+    } > hookReImpl_Lift2A_2C_LiftStop
+
+    /* Custom section for our hook code */
+    .hookCloudyElevator_RemoveRider : 
+    {
+        hookCloudyElevator_RemoveRider.o(.text)
+        hookCloudyElevator_RemoveRider.o(.rodata)
+        hookCloudyElevator_RemoveRider.o(.rodata*)
+        hookCloudyElevator_RemoveRider.o(.data)
+        hookCloudyElevator_RemoveRider.o(.bss)
+    } > hookCloudyElevator_RemoveRider
+
+    /* Custom section for our hook code */
+    .hookCloudyElevator_FreeAttach : 
+    {
+        hookCloudyElevator_FreeAttach.o(.text)
+        hookCloudyElevator_FreeAttach.o(.rodata)
+        hookCloudyElevator_FreeAttach.o(.rodata*)
+        hookCloudyElevator_FreeAttach.o(.data)
+        hookCloudyElevator_FreeAttach.o(.bss)
+    } > hookCloudyElevator_FreeAttach
+
+    /* Custom section for our hook code */
+    .hookSunkenElevator_IsRider1 : 
+    {
+        hookSunkenElevator_IsRider1.o(.text)
+        hookSunkenElevator_IsRider1.o(.rodata)
+        hookSunkenElevator_IsRider1.o(.rodata*)
+        hookSunkenElevator_IsRider1.o(.data)
+        hookSunkenElevator_IsRider1.o(.bss)
+    } > hookSunkenElevator_IsRider1
+
     .MainCodecave : 
     {
         main.o(.text)
@@ -822,6 +921,15 @@ SECTIONS
         updatehooks.o(.sbss)
         updatehooks.o(.scommon)
         updatehooks.o(.updatehooks.o.*)
+        notifications.o(.text)
+        notifications.o(.rodata)
+        notifications.o(.rodata*)
+        notifications.o(.data)
+        notifications.o(.bss)
+        notifications.o(.sdata)
+        notifications.o(.sbss)
+        notifications.o(.scommon)
+        notifications.o(.notifications.o.*)
         *(.text) /* Last section, place any potential remaining code sections */
         *(.branch_lt)
     } > MainCodecave

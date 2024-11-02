@@ -13,6 +13,9 @@ bool isButtonPressed(Buttons button, int padNum);
 //Check if the button has been released
 bool isButtonReleased(Buttons button, int padNum);
 
+//Check if the button has been pressed on any of the 4 gamepads.
+bool isButtonPressed_AnyPad(Buttons button);
+
 /*
 Visual example of a possible sequence of frames.
 "x" denotes when a function returns true.

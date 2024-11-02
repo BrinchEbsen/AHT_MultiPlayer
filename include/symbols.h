@@ -261,4 +261,11 @@ in_game bool EXODList_IsMember(EXODList* self, EXODListItem* pTarget); //0x802c7
 
 in_game int EXBaseDisplay_AddWnd(int* self, int* pWnd); //0x8027fff0
 
+in_game bool Platform_IsRider(int* self, int* item); //0x800e23b0
+in_game bool Player_ForcePlatformAttach(int* self, int* platform); //0x8005c298
+in_game void Platform_RemoveRider(int* self, int* rider); //0x800e2458
+in_game bool Player_FreePlatformAttach(int* self); //0x8005c304
+
+in_game void FlippingPlatform_HandleLiftStop(int* self); //0x801e9190
+
 #endif //SYMBOLS_H

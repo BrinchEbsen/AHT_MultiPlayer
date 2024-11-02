@@ -1,2 +1,2 @@
 Codecaves:
-[('MainCodecave', '0x80296618', '0x293618', ['main.c', 'buttons.c', 'colors.c', 'textprint.c', 'screenmath.c', 'loadingscreen.c', 'players.c', 'updatehooks.c'], '0x-3000', '0x7DCC')]
+[('MainCodecave', '0x80296618', '0x293618', ['main.c', 'buttons.c', 'colors.c', 'textprint.c', 'screenmath.c', 'loadingscreen.c', 'players.c', 'updatehooks.c', 'notifications.c'], '0x-3000', '0x7DCC')]

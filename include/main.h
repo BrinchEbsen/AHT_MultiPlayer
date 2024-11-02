@@ -15,11 +15,6 @@ extern bool MOD_INIT;
 extern int gMap_MechaRed;
 extern int gLevel_VolcanoDescent2;
 
-//Temporary raycast memory
-typedef struct RayVecs {
-    EXVector vecs[3];
-} RayVecs;
-
 typedef enum DeathMode {
     ReloadGame,
     PlayerDespawn,
@@ -27,9 +22,6 @@ typedef enum DeathMode {
 } DeathMode;
 
 extern DeathMode deathMode;
-
-//Empty color
-
 
 //VTABLES
 
@@ -125,6 +117,8 @@ extern bool showCoolDownTimer;
 //Current player handler being tracked for doing a breath attack
 extern int* currentBreather;
 
+extern bool elevatorHack;
+
 //Functions
 
 void SetupVtableHooks();
@@ -151,12 +145,6 @@ bool HandlerIsOrInheritsFrom(int* handler, EXRuntimeClass* class);
 
 //Get the flag for the gameloop being paused
 bool GameIsPaused();
-
-//Get a string representation of the given breath
-char* GetBreathName(Breaths breath);
-
-//Get the color associated with the given health value
-XRGBA* GetHealthColor(int health);
 
 //Get the function pointer to the PlayerSetup method for the given map
 SE_Map_v_PlayerSetup GetMapPlayerSetupFunc(int* map);
@@ -215,9 +203,6 @@ int GUI_PauseMenu_v_DrawStateRunning_Hook(int* self, int* pWnd);
 //Typically you'd return true if a button has just been pressed.
 bool ScanUpdate();
 
-//runs right before an itemhandler is updated
-bool ItemHandler_SEUpdate_Hook(int* self);
-
 //Replaces the call to EXItemEnv::UpdateItems_Physics
 //replaces the original code but adds swapping around player references.
 void EXItemEnv_UpdateItems_Physics_Hook(int* self);
@@ -269,5 +254,20 @@ bool Particle_Fire_FlameObjects_Hook(int* self, int breath, EXVector* pos, float
 
 //Add a null-check before playing the sfx for ending the electric breath.
 bool ElecBreathStop_PlaySFX_NullCheckFix_Hook(uint soundHash, int* item);
+
+void ReImpl_Lift2A_2C_HandleLiftStop();
+
+//Replace rider check for elevator to only return true if all players are on.
+bool Elevator_IsRider_Hook(int* self, int* handler);
+
+//Replace platform attach for elevators to make it attach all players.
+bool Elevator_Player_PlatformAttach_Hook(int* self, int* platform);
+
+void Elevator_RemoveRider_Hook(int* self, int* player);
+
+bool Elevator_FreePlatformAttach_Hook(int* player);
+
+//Replace button check for elevators to make them respond to any player.
+bool Elevator_CheckBButton_Hook(Buttons button, int CheckPad);
 
 #endif

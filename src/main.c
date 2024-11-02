@@ -1,6 +1,7 @@
 #include <main.h>
 #include <loadingscreen.h>
 #include <players.h>
+#include <notifications.h>
 
 bool MOD_INIT = false;
 
@@ -92,6 +93,8 @@ bool showCoolDownTimer = false;
 //Current player handler being tracked for doing a breath attack
 int* currentBreather = NULL;
 
+bool elevatorHack = false;
+
 void SetupVtableHooks() {
     vtable_GUI_PanelItem_v_StateRunning = GUI_PanelItem_v_StateRunning_Hook;
     vtable_GUI_PauseMenu_v_DrawStateRunning = GUI_PauseMenu_v_DrawStateRunning_Hook;
@@ -100,7 +103,7 @@ void SetupVtableHooks() {
 }
 
 inline bool isPointer(void* ptr) {
-    if ((ptr < 0x817FFFFF) && (ptr >= 0x80000000)) { return true; }
+    if ((ptr < 0x81800000) && (ptr >= 0x80000000)) { return true; }
     return false;
 }
 
@@ -191,35 +194,6 @@ bool HandlerIsOrInheritsFrom(int* handler, EXRuntimeClass* class) {
 bool GameIsPaused() {
     int flags = *((&gGameLoop) + (0x88/4));
     return (flags & 0x80000000) != 0;
-}
-
-char* GetBreathName(Breaths breath) {
-    switch (breath) {
-        case Breath_Fire:
-            return "Fire";
-        case Breath_Electric:
-            return "Electric";
-        case Breath_Water:
-            return "Water"; 
-        case Breath_Ice:
-            return "Ice";
-    }
-
-    return "Invalid";
-}
-
-XRGBA* GetHealthColor(int health) {
-    //Sparx' colors are different depending on if the upgrade has been bought
-    bool gottenUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
-
-    //Each unit of health is 0x20
-    int index = health/0x20;
-
-    if (gottenUpgrade) {
-        return HEALTH_COLORS_UPGRADE[index];
-    } else {
-        return HEALTH_COLORS_NO_UPGRADE[index];
-    }
 }
 
 SE_Map_v_PlayerSetup GetMapPlayerSetupFunc(int* map) {
@@ -1143,86 +1117,6 @@ bool ScanUpdate() {
     return false;
 }
 
-bool ItemHandler_SEUpdate_Hook(int* self) {
-    int vtable = *(self + 0x4/4);
-    int ID = *(self + 0x8/4);
-
-    if (HandlerIsPlayer(self)) {
-        //This function will set the playerstate globals to the player's personal one
-        PlayerHandlerPreUpdate(self);
-
-        bool res = ItemHandler_SEUpdate(self);
-
-        PlayerHandlerPostUpdate(self);
-
-        g_PadNum = 0;
-        return res;
-    } else if (vtable == CAMERA_FOLLOW_VTABLE) {
-        //Make the player moving the stick the most control the camera
-        g_PadNum = whoShouldControlCamera();
-
-        bool res = ItemHandler_SEUpdate(self);
-
-        CameraFollowPostUpdate(self);
-
-        g_PadNum = 0;
-        return res;
-    } else if (vtable == CAMERA_BALLGADGET_FOLLOW_VTABLE) {
-        //Make the player moving the stick the most control the camera
-        g_PadNum = whoShouldControlCamera();
-
-        bool res = ItemHandler_SEUpdate(self);
-
-        CameraBallGadgetFollowPostUpdate(self);
-
-        g_PadNum = 0;
-        return res;
-    } else if (vtable == CAMERA_BOSS_VTABLE) {
-        g_PadNum = whoShouldControlCamera();
-
-        updateCameraTargetItem();
-        if (cameraTargetItem != NULL) {
-            gpPlayerItem = cameraTargetItem;
-        }
-
-        bool res = ItemHandler_SEUpdate(self);
-
-        CameraBossPostUpdate(self);
-
-        int* list[4];
-        int count = GetArrayOfPlayerHandlers(&list);
-        if (count != 0) {
-            gpPlayerItem = (int*) *(list[0]);
-        } else {
-            gpPlayerItem = NULL;
-        }
-
-        g_PadNum = 0;
-        return res;
-    } else if (vtable == SPARX_VTABLE) {
-        SparxPreUpdate(self);
-    } else if (vtable == LOCKEDCHEST_VTABLE) {
-        for (int i = 0; i < 4; i++) {
-            if (players[i] == -1) { continue; }
-
-            SetPlayerRefToPort(i);
-            break;
-        }
-    } else if (vtable == BOSS_VTABLE) {
-        //gpPlayer = GetFirstPlayerNotZeroHP();
-        //gpPlayerItem = (int*) *gpPlayer;
-    } else {
-        MiscHandlerPreUpdate(self);
-    }
-
-    //This is only reached if each case doesn't return on its own
-    bool res = ItemHandler_SEUpdate(self);
-
-    //Return control to player 1 after updating
-    g_PadNum = 0;
-    return res;
-}
-
 void EXItemEnv_UpdateItems_Physics_Hook(int* self) {
     EXDList* list = (EXDList*) *(self + (0x80/4));
 
@@ -1551,4 +1445,101 @@ bool ElecBreathStop_PlaySFX_NullCheckFix_Hook(uint soundHash, int* item) {
     if (gpPlayer == NULL) { return false; }
 
     return PlaySFX_AtItem(soundHash, (int*) *gpPlayer);
+}
+
+void ReImpl_Lift2A_2C_HandleLiftStop(int* self) {
+    elevatorHack = true;
+    FlippingPlatform_HandleLiftStop(self);
+    elevatorHack = false;
+}
+
+bool Elevator_IsRider_Hook(int* self, int* handler) {
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count == 0) { return false; }
+
+    for (int i = 0; i < count; i++) {
+        bool isRider = Platform_IsRider(self, list[i]);
+
+        if (!isRider) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool Elevator_Player_PlatformAttach_Hook(int* self, int* platform) {
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count != 0) {
+        for (int i = 0; i < count; i++) {
+            Player_ForcePlatformAttach(list[i], platform);
+        }
+    }
+
+    return true;
+}
+
+void Elevator_RemoveRider_Hook(int *self, int *player) {
+    if (!elevatorHack) {
+        Platform_RemoveRider(self, player);
+        return;
+    }
+
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count != 0) {
+        for (int i = 0; i < count; i++) {
+            Platform_RemoveRider(self, list[i]);
+        }
+    }
+}
+
+bool Elevator_FreePlatformAttach_Hook(int *player) {
+    if (!elevatorHack) {
+        return Player_FreePlatformAttach(player);
+    }
+
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count != 0) {
+        for (int i = 0; i < count; i++) {
+            Player_FreePlatformAttach(list[i]);
+        }
+    }
+    
+    return true;
+}
+
+void SetPlayer_Hook() {
+    int* list[4];
+    int count = GetArrayOfPlayerHandlers(&list);
+
+    if (count != 0) {
+        for (int i = 0; i < count; i++) {
+            if (list[i] == gpPlayer) { continue; }
+
+            int* item = (int*) *gpPlayer;
+            EXVector* pos = (EXVector*) (item + (0xd0/4));
+
+            teleportPlayer(list[i], pos);
+        }
+    }
+}
+
+bool Elevator_CheckBButton_Hook(Buttons button, int CheckPad) {
+    for (int i = 0; i < 4; i++) {
+        if (players[i] == -1) { continue; }
+
+        if (isButtonPressed(button, i)) {
+            return true;
+        }
+    }
+
+    return false;
 }

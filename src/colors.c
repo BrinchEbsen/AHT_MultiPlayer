@@ -1,3 +1,4 @@
+#include <colors.h>
 #include <common.h>
 
 //Colors

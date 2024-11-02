@@ -1,3 +1,4 @@
+#include <loadingscreen.h>
 #include <common.h>
 #include <hashcodes.h>
 #include <symbols.h>
