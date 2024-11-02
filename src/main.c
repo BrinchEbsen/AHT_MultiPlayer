@@ -3,6 +3,8 @@
 #include <players.h>
 #include <notifications.h>
 
+//#define USE_ELEVATOR_HACK
+
 bool MOD_INIT = false;
 
 int gMap_MechaRed = 0x8045b5d8;
@@ -1448,9 +1450,13 @@ bool ElecBreathStop_PlaySFX_NullCheckFix_Hook(uint soundHash, int* item) {
 }
 
 void ReImpl_Lift2A_2C_HandleLiftStop(int* self) {
+    #ifdef USE_ELEVATOR_HACK
     elevatorHack = true;
+    #endif
     FlippingPlatform_HandleLiftStop(self);
+    #ifdef USE_ELEVATOR_HACK
     elevatorHack = false;
+    #endif
 }
 
 bool Elevator_IsRider_Hook(int* self, int* handler) {
@@ -1484,10 +1490,12 @@ bool Elevator_Player_PlatformAttach_Hook(int* self, int* platform) {
 }
 
 void Elevator_RemoveRider_Hook(int *self, int *player) {
+    #ifdef USE_ELEVATOR_HACK
     if (!elevatorHack) {
         Platform_RemoveRider(self, player);
         return;
     }
+    #endif
 
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);
@@ -1500,9 +1508,11 @@ void Elevator_RemoveRider_Hook(int *self, int *player) {
 }
 
 bool Elevator_FreePlatformAttach_Hook(int *player) {
+    #ifdef USE_ELEVATOR_HACK
     if (!elevatorHack) {
         return Player_FreePlatformAttach(player);
     }
+    #endif
 
     int* list[4];
     int count = GetArrayOfPlayerHandlers(&list);

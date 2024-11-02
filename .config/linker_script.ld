@@ -82,6 +82,8 @@ MEMORY
     hookCloudyElevator_RemoveRider : ORIGIN = 0x801e9598, LENGTH = 0x100000
     hookCloudyElevator_FreeAttach : ORIGIN = 0x801e9648, LENGTH = 0x100000
     hookSunkenElevator_IsRider1 : ORIGIN = 0x801e8d24, LENGTH = 0x100000
+    hookSunkenElevator_IsRider2 : ORIGIN = 0x801e8e0c, LENGTH = 0x100000
+    hookSunkenElevator_CheckButton : ORIGIN = 0x801e8e38, LENGTH = 0x100000
 }
 
 SECTIONS
@@ -846,6 +848,26 @@ SECTIONS
         hookSunkenElevator_IsRider1.o(.data)
         hookSunkenElevator_IsRider1.o(.bss)
     } > hookSunkenElevator_IsRider1
+
+    /* Custom section for our hook code */
+    .hookSunkenElevator_IsRider2 : 
+    {
+        hookSunkenElevator_IsRider2.o(.text)
+        hookSunkenElevator_IsRider2.o(.rodata)
+        hookSunkenElevator_IsRider2.o(.rodata*)
+        hookSunkenElevator_IsRider2.o(.data)
+        hookSunkenElevator_IsRider2.o(.bss)
+    } > hookSunkenElevator_IsRider2
+
+    /* Custom section for our hook code */
+    .hookSunkenElevator_CheckButton : 
+    {
+        hookSunkenElevator_CheckButton.o(.text)
+        hookSunkenElevator_CheckButton.o(.rodata)
+        hookSunkenElevator_CheckButton.o(.rodata*)
+        hookSunkenElevator_CheckButton.o(.data)
+        hookSunkenElevator_CheckButton.o(.bss)
+    } > hookSunkenElevator_CheckButton
 
     .MainCodecave : 
     {
