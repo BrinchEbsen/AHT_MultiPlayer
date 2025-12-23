@@ -435,7 +435,7 @@ void teleportPlayersToPlayer(int portNr) {
     if (count < 2) { return; } //Ignore if only 1 player
 
     for (int i = 0; i < count; i++) {
-        if (handler == list[i]) { continue; }
+        if (handler == list[i]) { continue; } //ignore self
 
         teleportPlayer(list[i], handler);
     }

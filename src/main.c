@@ -380,19 +380,34 @@ void SparxPreUpdate(int* self) {
         globalRefPortNr = GetPortNrFromPlayerHandler(playerHandler);
     }
 
-    return;
+    //return;
 
     //If using multiplayer health mode, set to lowest of all player's health.
     //This is partially to make him chase butterflies even if one player isn't at full health
-    if (NumberOfPlayers() > 1) {
-        gPlayerState.Health = PLAYER_HEALTH[0];
-        for (int i = 1; i < 4; i++) {
-            if (players[i] != -1) {
-                if (gPlayerState.Health > PLAYER_HEALTH[i]) {
-                    gPlayerState.Health = PLAYER_HEALTH[i];
-                }
+    int highest = PLAYER_HEALTH[globalRefPortNr];
+    int lowest = PLAYER_HEALTH[globalRefPortNr];
+    for (int i = 1; i < 4; i++) {
+        if (players[i] != -1) {
+            if (PLAYER_HEALTH[i] > highest) {
+                highest = PLAYER_HEALTH[i];
+            }
+            if (PLAYER_HEALTH[i] < lowest) {
+                lowest = PLAYER_HEALTH[i];
             }
         }
+    }
+
+    bool haveSparx = true;
+    bool hasUpgrade = (gPlayerState.AbilityFlags & Abi_HitPointUpgrade) != 0;
+    int sparxLessHealth = hasUpgrade ? 0x20 : 0x40;
+
+    if (highest <= sparxLessHealth) {
+        gPlayerState.Health = lowest;
+    } else {
+        if (lowest <= (sparxLessHealth + 0x20)) {
+            lowest = sparxLessHealth + 0x20;
+        }
+        gPlayerState.Health = lowest;
     }
 }
 
@@ -784,6 +799,8 @@ void HandleMultiplayerMenu() {
 }
 
 void MainUpdate() {
+    ig_printf("hello!\n");
+
     if (!MOD_INIT) {
         MOD_INIT = true;
 
