@@ -1,3 +1,7 @@
+⚠️ This mod is no longer being worked on - a rewrite is planned when Composer's next version of the modding utility comes out!
+
+Feel free to still report errors, as it could help track down issues in the rewrite.
+
 # Spyro: A Hero's Tail Multiplayer
 This is a work-in-progress mod for Spyro: A Hero's Tail that adds support for multiple players.
 
